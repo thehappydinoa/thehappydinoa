@@ -22,9 +22,3 @@ Here are some ideas to get you started:
 - :question: Ask me about Cyber-Security, Open-Source Development, React, React-Native, and Python
 - :smiley: Pronouns: He/Him/His
 - :mailbox_with_mail: How to reach me: Send me an email at [aidan@davisholland.com](mailto:aidan@davisholland.com)
-
-- [:technologist: `pip install fsociety`](https://github.com/fsociety-team/fsociety) - A Modular Penetration Testing Framework
-- [:satellite: `pip install darksearch`](https://github.com/thehappydinoa/DarkSearch) - Python API wrapper for darksearch.io
-- [:speaker: `pip install itachip2ir`](https://github.com/thehappydinoa/itachip2ir) - Interact with the Global Cache iTach WF2IR or IP2IR
-- [:tv: `pip install aquosRemote`](https://github.com/thehappydinoa/aquosRemote) - Send Remote Control Codes to your Sharp AQUOS Smart TV
-- [:link: `pip install fecho`](https://github.com/thehappydinoa/fecho) - Requests wrapper that uses Facebook Developer tool echo
