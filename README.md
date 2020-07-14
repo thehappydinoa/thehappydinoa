@@ -13,10 +13,6 @@ Here are some ideas to get you started:
 - ⚡ Fun fact: ...
 -->
 
-[![Twitter](https://badgen.net/twitter/follow/thehappydinoa?icon=twitter&label=@thehappydinoa)](https://twitter.com/thehappydinoa)
-[![GitHub Sponsors](https://badgen.net/badge/Support%20Me%20On/GitHub/blue?icon=github)](https://github.com/sponsors/thehappydinoa)
-[![Website](https://badgen.net/badge/website/up/green)](https://aidan.davisholland.com)
-
 - :computer: I’m currently working as a Full-Stack Developer at [TruckBux](https://truckbux.com)
 - :desktop_computer: I’m also currently working as an Software Engineering Intern at [Censys](https://censys.io)
 - :question: Ask me about Cyber-Security, Open-Source Development, React, React-Native, and Python
