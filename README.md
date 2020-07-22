@@ -13,8 +13,8 @@ Here are some ideas to get you started:
 - ⚡ Fun fact: ...
 -->
 
-- :computer: I’m currently working as a Full-Stack Developer at [TruckBux](https://truckbux.com)
-- :desktop_computer: I’m also currently working as an Software Engineering Intern at [Censys](https://censys.io)
+- :desktop_computer: I’m currently working as an Software Engineering Intern at [Censys](https://censys.io)
+- :computer: I’m also currently working as a Full-Stack Developer at [TruckBux](https://truckbux.com)
 - :question: Ask me about Cyber-Security, Open-Source Development, React, React-Native, and Python
 - :smiley: Pronouns: He/Him/His
-- :mailbox_with_mail: How to reach me: Send me an email at [aidan@davisholland.com](mailto:aidan@davisholland.com)
+- :mailbox_with_mail: How to reach me: Send me an email at [thehappydinoa@gmail.com](mailto:thehappydinoa@gmail.com)
