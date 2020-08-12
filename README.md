@@ -13,6 +13,9 @@ Here are some ideas to get you started:
 - ⚡ Fun fact: ...
 -->
 
+![Twitter Follow](https://img.shields.io/twitter/follow/thehappydinoa?color=blue&label=%40thehappydinoa&logo=twitter&style=flat-square)
+![Reddit User Karma](https://img.shields.io/reddit/user-karma/combined/thehappydinoa?logo=reddit&style=flat-square)
+
 - :desktop_computer: I’m currently working as an Software Engineering Intern at [Censys](https://censys.io)
 - :computer: I’m also currently working as a Full-Stack Developer at [TruckBux](https://truckbux.com)
 - :question: Ask me about Cyber-Security, Open-Source Development, React, React-Native, and Python
