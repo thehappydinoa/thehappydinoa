@@ -14,7 +14,8 @@ Here are some ideas to get you started:
 -->
 
 <img alt="Profile Stats"
-    src="https://github-readme-stats.vercel.app/api?username=thehappydinoa&count_private=true&show_icons=true&include_all_commits=true&line_height=27" /> <img alt="Top Langs"
+    src="https://github-readme-stats.vercel.app/api?username=thehappydinoa&count_private=true&show_icons=true&include_all_commits=true&line_height=27" />
+<img alt="Top Langs"
     src="https://github-readme-stats.vercel.app/api/top-langs/?username=thehappydinoa&hide=css,typescript" />
 
 - :desktop_computer: I’m currently working as an Software Engineering Intern at [Censys](https://censys.io)
