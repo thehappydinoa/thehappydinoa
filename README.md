@@ -1,20 +1,32 @@
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-aidandholland-blue)](https://www.linkedin.com/in/aidandholland/)
-[![LinkedIn](https://img.shields.io/badge/Email-thehappydinoa@gmail.com-orange)](mailto:thehappydinoa@gmail.com)
-
 ```python
 aidan_holland = {
     "Pronouns": ["He", "Him", "His"],
     "Ask Me About": ["Cyber Security", "Open Source Development"],
+    "Languages": [
+        "Python",
+        "Python3",
+        "JavaScript",
+        "TypeScript",
+        "Go",
+        "Bash",
+        "SQL",
+        "C++",
+        "HTML",
+        "CSS",
+    ],
     "Technologies": {
-        "Backend": ["python", "go", "bash"],
-        "Frontend": ["node", "react"],
-        "Mobile": ["react-native"],
-        "Database": ["MySQL", "NoSQL"],
-        "Serverless": ["AWS Lambda"],
+        "Backend": ["Django", "Flask", "Sanic", "SQLAlchemy", "Express"],
+        "Frontend": ["Node.js", "React.js", "Redux", "Storybook", "Jest"],
+        "Mobile": ["React Native"],
+        "Database": ["MySQL", "NoSQL", "PostgreSQL"],
+        "Serverless": ["AWS Lambda", "Heroku"],
         "Dev Ops": ["AWS", "GitHub", "GitLab", "Docker", "Terraform"],
+        "Operating Systems": ["macOS", "*nix", "Windows"],
+        "Design": ["Figma"],
         "Misc": ["Firebase"],
     },
 }
+
 ```
 
 <details>
