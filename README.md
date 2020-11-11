@@ -12,7 +12,7 @@ aidan_holland = {
         "Java",
     ],
     "Technologies": {
-        "Backend": ["Django", "Flask", "Sanic", "SQLAlchemy", "Express"],
+        "Backend": ["Flask", "Django", "Sanic", "SQLAlchemy", "Express"],
         "Frontend": ["Node.js", "React.js", "Redux", "Storybook", "Jest"],
         "Mobile": ["React Native"],
         "Database": ["MySQL", "NoSQL", "MongoDB", "PostgreSQL"],
