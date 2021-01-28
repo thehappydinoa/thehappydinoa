@@ -15,7 +15,7 @@ aidan_holland = {
         "Backend": ["Flask", "Django", "Sanic", "SQLAlchemy", "Express"],
         "Frontend": ["Node.js", "React.js", "Redux", "Storybook", "Jest"],
         "Mobile": ["React Native"],
-        "Database": ["MySQL", "NoSQL", "MongoDB", "PostgreSQL"],
+        "Database": ["MySQL", "NoSQL", "MongoDB", "PostgreSQL", "Oracle"],
         "Serverless": ["AWS Lambda", "Heroku"],
         "Dev Ops": ["AWS", "GitHub", "GitLab", "Docker", "Terraform"],
         "Operating Systems": ["macOS", "Linux", "Windows"],
