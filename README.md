@@ -15,7 +15,7 @@ aidan_holland = {
         "Backend": ["Flask", "Django", "Sanic", "SQLAlchemy", "Express"],
         "Frontend": ["Node.js", "React.js", "Redux", "Storybook", "Jest"],
         "Mobile": ["React Native"],
-        "Database": ["MySQL", "NoSQL", "MongoDB", "PostgreSQL"],
+        "Database": ["MySQL", "NoSQL", "MongoDB", "PostgreSQL", "Oracle"],
         "Serverless": ["AWS Lambda", "Heroku"],
         "Dev Ops": ["AWS", "GitHub", "GitLab", "Docker", "Terraform"],
         "Operating Systems": ["macOS", "Linux", "Windows"],
@@ -24,11 +24,11 @@ aidan_holland = {
     },
     "Stats": {
         "Account Age": "3 years",
-        "Pushed": "1731 commits",
+        "Pushed": "1720 commits",
         "Opened": "118 issues",
         "Submitted": "128 pull requests",
         "Received": "254 stars",
-        "Own": "45 repositories",
+        "Own": "44 repositories",
         "Contributed to": "21 public repositories",
     }
 }
