@@ -25,7 +25,7 @@ aidan_holland = {
     },
     "Stats": {
         "Account Age": "3 years",
-        "Pushed": "1845 commits",
+        "Pushed": "1849 commits",
         "Opened": "120 issues",
         "Submitted": "142 pull requests",
         "Received": "266 stars",
