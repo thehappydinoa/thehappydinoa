@@ -24,8 +24,8 @@ aidan_holland = {
         "Misc": ["Firebase"],
     },
     "Stats": {
-        "Account Age": "3 years",
-        "Pushed": "2631 commits",
+        "Account Age": "4 years",
+        "Pushed": "2637 commits",
         "Opened": "126 issues",
         "Submitted": "173 pull requests",
         "Received": "280 stars",
