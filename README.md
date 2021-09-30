@@ -2,18 +2,19 @@
 aidan_holland = {
     "Pronouns": ["He", "Him", "His"],
     "Ask Me About": ["Cyber Security", "Open Source Development"],
-    "Languages": [
-        "Python",
-        "JavaScript",
-        "TypeScript",
-        "Java",
-        "Go",
-        "Bash",
-        "C++",
-        "C"
-    ],
+    "Languages": {
+        "Python": "Advanced",
+        "JavaScript": "Advanced",
+        "TypeScript": "Intermediate",
+        "Java": "Intermediate",
+        "Go": "Intermediate",
+        "Bash": "Intermediate",
+        "C++": "Beginner",
+        "C": "Beginner",
+        "Racket": "Beginner"
+    },
     "Technologies": {
-        "Backend": ["Flask", "Django", "Sanic", "SQLAlchemy", "Express"],
+        "Backend": ["Flask", "Django", "Sanic", "SQLAlchemy", "Express", "Jinja"],
         "Frontend": ["Node.js", "React.js", "Redux", "Storybook", "Jest"],
         "Mobile": ["React Native"],
         "Database": ["MySQL", "MongoDB", "PostgreSQL", "Oracle"],
@@ -25,7 +26,7 @@ aidan_holland = {
     },
     "Stats": {
         "Account Age": "4 years",
-        "Pushed": "2500 commits",
+        "Pushed": "2501 commits",
         "Opened": "129 issues",
         "Submitted": "187 pull requests",
         "Received": "302 stars",
