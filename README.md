@@ -29,7 +29,7 @@ aidan_holland = {
         "Pushed": "2704 commits",
         "Opened": "130 issues",
         "Submitted": "195 pull requests",
-        "Received": "317 stars",
+        "Received": "318 stars",
         "Own": "47 repositories",
         "Contributed to": "52 public repositories",
     }
