@@ -1,7 +1,13 @@
-```python
-aidan_holland = {
+# About Me
+
+```json
+{
+    "Name": "Aidan Holland",
     "Pronouns": ["He", "Him", "His"],
-    "Ask Me About": ["Cyber Security", "Open Source Development"],
+    "Ask Me About": [
+        "Cyber Security",
+        "Open Source Development"
+    ],
     "Languages": {
         "Python": "Advanced",
         "JavaScript": "Advanced",
@@ -14,15 +20,69 @@ aidan_holland = {
         "Racket": "Beginner"
     },
     "Technologies": {
-        "Backend": ["Flask", "Django", "Sanic", "SQLAlchemy", "Express", "Jinja"],
-        "Frontend": ["Node.js", "React.js", "Redux", "Storybook", "Jest"],
-        "Mobile": ["React Native"],
-        "Database": ["MySQL", "MongoDB", "PostgreSQL", "Oracle"],
-        "Serverless": ["AWS Lambda", "Heroku"],
-        "Dev Ops": ["AWS", "GitHub", "GitLab", "Docker", "Terraform"],
-        "Operating Systems": ["macOS", "Linux"],
-        "Design": ["Figma"],
-        "Misc": ["Firebase"],
+        "Backend": [
+          "Fast API",
+          "Flask", 
+          "Django",
+          "Sanic",
+          "SQLAlchemy",
+          "Express",
+          "Protobufs",
+          "Pyramid",
+          "Jinja"
+        ],
+        "Frontend": [
+          "Node.js",
+          "React.js",
+          "Redux",
+          "Storybook",
+          "Jest"
+        ],
+        "Mobile": [
+          "React Native"
+        ],
+        "Database": [
+          "MySQL",
+          "PostgreSQL",
+          "MongoDB",
+          "ElasticSearch",
+          "Oracle"
+        ],
+        "Serverless": [
+          "AWS Lambda",
+          "GCP Cloud Functions",
+          "Azure Functions",
+          "Heroku"
+        ],
+        "Dev Ops": [
+          "AWS",
+          "GCP",
+          "Git",
+          "GitHub",
+          "GitLab",
+          "Docker",
+          "Terraform"
+        ],
+        "Cyber Security": [
+          "Censys",
+          "Shodan",
+          "Splunk",
+          "Maltego",
+          "Nessus",
+          "Nmap"
+        ],
+        "Operating Systems": [
+          "macOS",
+          "Linux"
+        ],
+        "Design": [
+          "Figma",
+          "Adobe XD"
+        ],
+        "Misc": [
+          "Firebase",
+          "Adobe Premiere Pro"
+        ],
     },
     "Stats": {
         "Account Age": "{{ ACCOUNT_AGE }} years",
