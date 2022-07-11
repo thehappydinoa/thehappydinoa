@@ -87,7 +87,7 @@
     "Stats": {
         "Account Age": "4 years",
         "Pushed": "3371 commits",
-        "Opened": "138 issues",
+        "Opened": "139 issues",
         "Submitted": "219 pull requests",
         "Received": "343 stars",
         "Own": "51 repositories",
