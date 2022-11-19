@@ -86,7 +86,7 @@
     },
     "Stats": {
         "Account Age": "5 years",
-        "Pushed": "3625 commits",
+        "Pushed": "3627 commits",
         "Opened": "146 issues",
         "Submitted": "250 pull requests",
         "Received": "418 stars",
@@ -116,6 +116,12 @@
 
 [![GitHub Top Langs]](https://github.com/anuraghazra/github-readme-stats)
 
+</details>
+
+<details>
+  <summary>Social Media</summary>
+ 
+<a rel=“me” href=“https://infosec.exchange/@thehappydinoa”>Mastodon</a>
 </details>
 
 <!-- Links -->
