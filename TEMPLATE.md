@@ -118,12 +118,6 @@
 
 </details>
 
-<details>
-  <summary>Social Media</summary>
- 
-<a rel=“me” href=“https://infosec.exchange/@thehappydinoa”>Mastodon</a>
-</details>
-
 <!-- Links -->
 
 [github stats card]: https://github-readme-stats.vercel.app/api?username=thehappydinoa
