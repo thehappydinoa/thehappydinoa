@@ -86,12 +86,12 @@
     },
     "Stats": {
         "Account Age": "5 years",
-        "Pushed": "2860 commits",
+        "Pushed": "2856 commits",
         "Opened": "149 issues",
-        "Submitted": "333 pull requests",
+        "Submitted": "315 pull requests",
         "Received": "546 stars",
         "Own": "60 repositories",
-        "Contributed to": "54 public repositories",
+        "Contributed to": "48 public repositories",
     }
 }
 
