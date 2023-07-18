@@ -61,7 +61,8 @@
           "GitHub",
           "GitLab",
           "Docker",
-          "Terraform"
+          "Terraform",
+          "Kubernetes",
         ],
         "Cyber Security": [
           "Censys",
