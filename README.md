@@ -61,7 +61,8 @@
           "GitHub",
           "GitLab",
           "Docker",
-          "Terraform"
+          "Terraform",
+          "Kubernetes",
         ],
         "Cyber Security": [
           "Censys",
@@ -86,12 +87,12 @@
     },
     "Stats": {
         "Account Age": "6 years",
-        "Pushed": "2908 commits",
+        "Pushed": "2919 commits",
         "Opened": "152 issues",
         "Submitted": "329 pull requests",
         "Received": "551 stars",
         "Own": "60 repositories",
-        "Contributed to": "49 public repositories",
+        "Contributed to": "50 public repositories",
     }
 }
 
