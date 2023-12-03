@@ -92,7 +92,7 @@
         "Submitted": "419 pull requests",
         "Received": "599 stars",
         "Own": "63 repositories",
-        "Contributed to": "46 public repositories",
+        "Contributed to": "45 public repositories",
     }
 }
 
