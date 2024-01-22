@@ -90,7 +90,7 @@
         "Pushed": "3074 commits",
         "Opened": "155 issues",
         "Submitted": "458 pull requests",
-        "Received": "649 stars",
+        "Received": "648 stars",
         "Own": "63 repositories",
         "Contributed to": "43 public repositories",
     }
