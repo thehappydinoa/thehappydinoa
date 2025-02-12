@@ -15,9 +15,9 @@
         "Java": "Intermediate",
         "Go": "Intermediate",
         "Bash": "Intermediate",
+        "Racket": "Intermediate",
         "C++": "Beginner",
-        "C": "Beginner",
-        "Racket": "Beginner"
+        "C": "Beginner"
     },
     "Technologies": {
         "Backend": [
@@ -70,7 +70,8 @@
           "Splunk",
           "Maltego",
           "Nessus",
-          "Nmap"
+          "Nmap",
+          "ZMap"
         ],
         "Operating Systems": [
           "macOS",
