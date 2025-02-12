@@ -10,10 +10,10 @@
     ],
     "Languages": {
         "Python": "Advanced",
+        "Go": "Advanced",
+        "Java": "Advanced",
         "JavaScript": "Advanced",
         "TypeScript": "Intermediate",
-        "Java": "Intermediate",
-        "Go": "Intermediate",
         "Bash": "Intermediate",
         "Racket": "Intermediate",
         "C++": "Beginner",
@@ -88,7 +88,7 @@
     },
     "Stats": {
         "Account Age": "7 years",
-        "Pushed": "3048 commits",
+        "Pushed": "3049 commits",
         "Opened": "158 issues",
         "Submitted": "641 pull requests",
         "Received": "1416 stars",
