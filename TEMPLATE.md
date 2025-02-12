@@ -10,10 +10,10 @@
     ],
     "Languages": {
         "Python": "Advanced",
+        "Go": "Advanced",
+        "Java": "Advanced",
         "JavaScript": "Advanced",
         "TypeScript": "Intermediate",
-        "Java": "Intermediate",
-        "Go": "Intermediate",
         "Bash": "Intermediate",
         "Racket": "Intermediate",
         "C++": "Beginner",
