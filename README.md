@@ -15,9 +15,9 @@
         "Java": "Intermediate",
         "Go": "Intermediate",
         "Bash": "Intermediate",
+        "Racket": "Intermediate",
         "C++": "Beginner",
-        "C": "Beginner",
-        "Racket": "Beginner"
+        "C": "Beginner"
     },
     "Technologies": {
         "Backend": [
@@ -70,7 +70,8 @@
           "Splunk",
           "Maltego",
           "Nessus",
-          "Nmap"
+          "Nmap",
+          "ZMap"
         ],
         "Operating Systems": [
           "macOS",
@@ -87,7 +88,7 @@
     },
     "Stats": {
         "Account Age": "7 years",
-        "Pushed": "3047 commits",
+        "Pushed": "3048 commits",
         "Opened": "158 issues",
         "Submitted": "641 pull requests",
         "Received": "1416 stars",
