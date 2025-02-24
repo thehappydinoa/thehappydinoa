@@ -90,8 +90,8 @@
         "Account Age": "7 years",
         "Pushed": "3050 commits",
         "Opened": "158 issues",
-        "Submitted": "645 pull requests",
-        "Received": "1462 stars",
+        "Submitted": "646 pull requests",
+        "Received": "1466 stars",
         "Own": "64 repositories",
         "Contributed to": "6 public repositories",
     }
