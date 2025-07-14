@@ -87,7 +87,7 @@
         ],
     },
     "Stats": {
-        "Account Age": "7 years",
+        "Account Age": "8 years",
         "Pushed": "3198 commits",
         "Opened": "158 issues",
         "Submitted": "736 pull requests",
