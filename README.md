@@ -98,7 +98,7 @@
         {
             "name": "awesome-censys-queries",
             "url": "https://github.com/thehappydinoa/awesome-censys-queries",
-            "stars": "1140",
+            "stars": "0",
             "description": "Curated Censys search queries"
         },
         {
@@ -122,12 +122,12 @@
     ],
     "Stats": {
         "Account Age": "8 years",
-        "Pushed": "913 commits",
+        "Pushed": "5000 commits",
         "Opened": "{{ ISSUES }} issues",
         "Submitted": "{{ PULL_REQUESTS }} pull requests",
-        "Received": "2072 stars",
-        "Own": "100 repositories",
-        "Contributed to": "15 public repositories",
+        "Received": "818 stars",
+        "Own": "198 repositories",
+        "Contributed to": "0 public repositories",
     }
 }
 
