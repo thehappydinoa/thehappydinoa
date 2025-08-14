@@ -24,8 +24,28 @@ async def get_github_stats(username, token):
         'Content-Type': 'application/json'
     }
     
+    # REST API headers (reused in multiple places)
+    rest_headers = {
+        'Authorization': f'token {token}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
+    
+    # Initialize stats containers
+    specific_repos = {
+        'awesome-censys-queries': 0,
+        'iosrestrictionbruteforce': 0,
+        'rootos': 0,
+        'tp-link-defaults': 0
+    }
+    total_repos = 0
+    total_stars = 0
+    account_age = 0
+    contributed_repos = set()
+    total_commits = 0
+    
+    # Use a single ClientSession for all requests
     async with aiohttp.ClientSession() as session:
-        # Use concurrent tasks for better performance
+        # Fetch data concurrently for better performance
         user_data_task = fetch_user_data(session, graphql_url, headers, username)
         repo_data_task = fetch_repo_data(session, graphql_url, headers, username)
         contribution_data_task = fetch_contribution_data(session, graphql_url, headers, username)
@@ -35,246 +55,55 @@ async def get_github_stats(username, token):
         repo_data = await repo_data_task
         contribution_data = await contribution_data_task
         
-        # Extract specific repository stats
-        specific_repos = {
-            'awesome-censys-queries': 0,
-            'iosrestrictionbruteforce': 0,
-            'rootos': 0,
-            'tp-link-defaults': 0
-        }
+        # Extract data from GraphQL responses
+        user_data_obj = get_nested_value(user_data, ['data', 'user'], {})
+        repo_data_obj = get_nested_value(repo_data, ['data', 'user', 'repositories'], {})
+        contribution_data_obj = get_nested_value(contribution_data, ['data', 'user'], {})
         
         # Process repository data
-        total_repos = 0
-        total_stars = 0
+        repos = get_nested_value(repo_data_obj, ['nodes'], [])
+        total_repos = get_nested_value(repo_data_obj, ['totalCount'], 0)
         
-        if ('data' in repo_data and 
-            'user' in repo_data['data'] and 
-            repo_data['data']['user'] is not None and
-            'repositories' in repo_data['data']['user'] and
-            repo_data['data']['user']['repositories'] is not None):
+        # Process repositories
+        print("Checking repositories for specific projects:")
+        for repo in repos:
+            if repo is None:
+                continue
+                
+            # Count stars
+            stars = repo.get('stargazerCount', 0) or 0
+            total_stars += stars
             
-            repos = repo_data['data']['user']['repositories'].get('nodes', []) or []
-            total_repos = repo_data['data']['user']['repositories'].get('totalCount', 0) or 0
+            # Check for specific repositories with better matching
+            repo_name = repo.get('name', '').lower()
+            full_name = repo.get('nameWithOwner', '').lower()
             
-            # Print all repositories for debugging
-            print("Checking repositories for specific projects:")
-            for repo in repos:
-                if repo is None:
-                    continue
-                    
-                # Count stars
-                total_stars += repo.get('stargazerCount', 0) or 0
-                
-                # Check for specific repositories with better matching
-                repo_name = repo.get('name', '').lower()
-                full_name = repo.get('nameWithOwner', '').lower()
-                stars = repo.get('stargazerCount', 0) or 0
-                
-                # Print repository info for debugging
-                print(f"  Repository: {full_name}, Stars: {stars}")
-                
-                # Exact match for awesome-censys-queries
-                if repo_name == 'awesome-censys-queries' or 'thehappydinoa/awesome-censys-queries' in full_name:
-                    specific_repos['awesome-censys-queries'] = stars
-                    print(f"    ✓ Found awesome-censys-queries: {stars} stars")
-                
-                # Match for iOSRestrictionBruteForce (case insensitive)
-                elif repo_name.lower() == 'iosrestrictionbruteforce' or 'iosrestrictionbruteforce' in full_name.lower():
-                    specific_repos['iosrestrictionbruteforce'] = stars
-                    print(f"    ✓ Found iOSRestrictionBruteForce: {stars} stars")
-                
-                # Match for rootOS
-                elif repo_name.lower() == 'rootos' or 'rootos' in full_name.lower():
-                    specific_repos['rootos'] = stars
-                    print(f"    ✓ Found rootOS: {stars} stars")
-                
-                # Match for TP-Link-defaults
-                elif repo_name.lower() == 'tp-link-defaults' or 'tp-link-defaults' in full_name.lower():
-                    specific_repos['tp-link-defaults'] = stars
-                    print(f"    ✓ Found TP-Link-defaults: {stars} stars")
+            # Print repository info for debugging
+            print(f"  Repository: {full_name}, Stars: {stars}")
+            
+            # Check for specific repositories of interest
+            await check_specific_repo(repo_name, full_name, stars, specific_repos)
         
         # Calculate account age
-        account_age = 0
-        if ('data' in user_data and 
-            'user' in user_data['data'] and 
-            user_data['data']['user'] is not None and
-            'createdAt' in user_data['data']['user']):
-            
-            created_at = user_data['data']['user']['createdAt']
-            if created_at:
-                try:
-                    created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                    account_age = max(1, (datetime.now(created_date.tzinfo) - created_date).days // 365)
-                except Exception as e:
-                    print(f"Error calculating account age: {e}")
-                    account_age = 1  # Default to 1 year if calculation fails
+        created_at = user_data_obj.get('createdAt')
+        if created_at:
+            try:
+                created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                account_age = max(1, (datetime.now(created_date.tzinfo) - created_date).days // 365)
+            except Exception as e:
+                print(f"Error calculating account age: {e}")
+                account_age = 1  # Default to 1 year if calculation fails
         
         # Get repositories contributed to
         print("Fetching repositories contributed to...")
-        contributed_repos = set()
+        contributed_repos = await get_contributed_repos(session, username, token, contribution_data_obj)
         
-        try:
-            # Method 1: Extract contributed repositories from GraphQL data
-            if ('data' in contribution_data and 
-                'user' in contribution_data['data'] and 
-                contribution_data['data']['user'] is not None):
-                
-                # From contributed repositories
-                user_data = contribution_data['data']['user']
-                
-                # Direct contributions
-                if ('repositoriesContributedTo' in user_data and 
-                    user_data['repositoriesContributedTo'] is not None):
-                    
-                    repos_data = user_data['repositoriesContributedTo']
-                    if 'nodes' in repos_data and repos_data['nodes'] is not None:
-                        for repo in repos_data['nodes'] or []:
-                            if repo and repo.get('nameWithOwner'):
-                                contributed_repos.add(repo.get('nameWithOwner'))
-                
-                # Pull requests
-                if ('pullRequests' in user_data and 
-                    user_data['pullRequests'] is not None):
-                    
-                    pr_data = user_data['pullRequests']
-                    if 'nodes' in pr_data and pr_data['nodes'] is not None:
-                        for pr in pr_data['nodes'] or []:
-                            if (pr and 'repository' in pr and 
-                                pr['repository'] is not None and 
-                                'nameWithOwner' in pr['repository']):
-                                contributed_repos.add(pr['repository']['nameWithOwner'])
-                
-                # Issues
-                if ('issues' in user_data and 
-                    user_data['issues'] is not None):
-                    
-                    issues_data = user_data['issues']
-                    if 'nodes' in issues_data and issues_data['nodes'] is not None:
-                        for issue in issues_data['nodes'] or []:
-                            if (issue and 'repository' in issue and 
-                                issue['repository'] is not None and 
-                                'nameWithOwner' in issue['repository']):
-                                contributed_repos.add(issue['repository']['nameWithOwner'])
-            
-            # Method 2: If GraphQL didn't work (or found nothing), use REST API as fallback
-            if len(contributed_repos) == 0:
-                print("  No contributed repositories found via GraphQL, trying REST API...")
-                
-                # Use REST API to get events
-                events_url = f'https://api.github.com/users/{username}/events/public'
-                rest_headers = {
-                    'Authorization': f'token {token}',
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-                
-                async with aiohttp.ClientSession() as rest_session:
-                    async with rest_session.get(events_url, headers=rest_headers) as response:
-                        if response.status == 200:
-                            events_data = await response.json()
-                            
-                            # Process events to find contributed repositories
-                            for event in events_data:
-                                repo = event.get('repo', {}).get('name')
-                                if repo and not repo.startswith(f"{username}/"):
-                                    contributed_repos.add(repo)
-                            
-                            print(f"  Found {len(contributed_repos)} contributed repos via REST API events")
-                
-                # If still no results, try starred repositories
-                if len(contributed_repos) == 0:
-                    print("  Checking starred repositories...")
-                    starred_url = f'https://api.github.com/users/{username}/starred'
-                    
-                    async with aiohttp.ClientSession() as rest_session:
-                        async with rest_session.get(starred_url, headers=rest_headers) as response:
-                            if response.status == 200:
-                                starred_data = await response.json()
-                                
-                                # Add starred repos that aren't owned by the user
-                                for repo in starred_data:
-                                    full_name = repo.get('full_name')
-                                    owner = repo.get('owner', {}).get('login')
-                                    if full_name and owner and owner.lower() != username.lower():
-                                        contributed_repos.add(full_name)
-                                
-                                print(f"  Found {len(contributed_repos)} potential contributed repos from starred repos")
-        
-        except Exception as e:
-            print(f"Error processing contributed repositories: {e}")
-            # Continue with an empty set if there's an error
-        
-        # Get commit count from contribution data
+        # Get commit count
         print("Calculating commit count...")
-        total_commits = 0
+        total_commits = await get_commit_count(contribution_data_obj, account_age, total_repos)
         
-        try:
-            if ('data' in contribution_data and 
-                'user' in contribution_data['data'] and 
-                contribution_data['data']['user'] is not None):
-                
-                user_data = contribution_data['data']['user']
-                
-                # Get contributions from the last year
-                if ('contributionsCollection' in user_data and
-                    user_data['contributionsCollection'] is not None):
-                    
-                    contributions = user_data['contributionsCollection']
-                    
-                    # Method 1: Total commit contributions (most reliable)
-                    if 'totalCommitContributions' in contributions:
-                        total_commits = contributions.get('totalCommitContributions', 0) or 0
-                        print(f"  Found {total_commits} commits from totalCommitContributions")
-                    
-                    # Method 2: Sum commits by repository (if available)
-                    if (total_commits == 0 and 
-                        'commitContributionsByRepository' in contributions and
-                        contributions['commitContributionsByRepository'] is not None):
-                        
-                        repo_commits = 0
-                        for repo_contrib in contributions['commitContributionsByRepository'] or []:
-                            if repo_contrib and 'contributions' in repo_contrib:
-                                contrib_count = repo_contrib.get('contributions', {})
-                                if isinstance(contrib_count, dict) and 'totalCount' in contrib_count:
-                                    repo_commits += contrib_count.get('totalCount', 0) or 0
-                        
-                        if repo_commits > 0:
-                            total_commits = repo_commits
-                            print(f"  Found {total_commits} commits from repository contributions")
-        except Exception as e:
-            print(f"Error calculating commit count: {e}")
-            # Continue with default value if there's an error
-        
-        # If we still don't have commits, estimate based on account age and activity
-        if total_commits == 0:
-            print("  Using profile contribution estimate...")
-            if account_age > 0:
-                # Estimate average commits per day based on public repos and account age
-                # This is a rough heuristic: ~1 commit per day per 10 repos is reasonable
-                account_days = account_age * 365
-                estimated_commits = int(account_days * (total_repos / 10))
-                # Cap at reasonable maximum (5000 is already a lot for most users)
-                total_commits = min(estimated_commits, 5000)
-        
-        print(f"  Final commit count: {total_commits}")
-        
-        # Check if awesome-censys-queries is still missing (direct REST API call as last resort)
-        if specific_repos['awesome-censys-queries'] == 0:
-            print("  Trying direct API call for awesome-censys-queries...")
-            try:
-                rest_headers = {
-                    'Authorization': f'token {token}',
-                    'Accept': 'application/vnd.github.v3+json'
-                }
-                
-                async with aiohttp.ClientSession() as rest_session:
-                    async with rest_session.get('https://api.github.com/repos/thehappydinoa/awesome-censys-queries', headers=rest_headers) as response:
-                        if response.status == 200:
-                            repo_data = await response.json()
-                            acq_stars = repo_data.get('stargazers_count', 0)
-                            specific_repos['awesome-censys-queries'] = acq_stars
-                            print(f"    ✓ Found awesome-censys-queries via direct API: {acq_stars} stars")
-            except Exception as e:
-                print(f"    Error getting awesome-censys-queries: {e}")
+        # Check for missing specific repositories and apply fallbacks
+        await apply_repo_fallbacks(session, specific_repos, rest_headers)
         
         # Template values for TEMPLATE.md
         template_values = {
@@ -291,6 +120,307 @@ async def get_github_stats(username, token):
         
         print(f"Retrieved stats: {total_repos} repos, {total_stars} stars, {total_commits} commits, {len(contributed_repos)} contributed repos")
         return template_values
+
+def get_nested_value(data, path, default=None):
+    """Safely get a nested value from a dictionary using a path list"""
+    current = data
+    for key in path:
+        if not isinstance(current, dict) or key not in current or current[key] is None:
+            return default
+        current = current[key]
+    return current or default
+
+async def check_specific_repo(repo_name, full_name, stars, specific_repos):
+    """Check if a repository matches any of the specific repositories we're looking for"""
+    # Exact match for awesome-censys-queries
+    if repo_name == 'awesome-censys-queries' or 'thehappydinoa/awesome-censys-queries' in full_name:
+        specific_repos['awesome-censys-queries'] = stars
+        print(f"    ✓ Found awesome-censys-queries: {stars} stars")
+    
+    # Match for iOSRestrictionBruteForce (case insensitive)
+    elif repo_name == 'iosrestrictionbruteforce' or 'iosrestrictionbruteforce' in full_name:
+        specific_repos['iosrestrictionbruteforce'] = stars
+        print(f"    ✓ Found iOSRestrictionBruteForce: {stars} stars")
+    
+    # Match for rootOS
+    elif repo_name == 'rootos' or 'rootos' in full_name:
+        specific_repos['rootos'] = stars
+        print(f"    ✓ Found rootOS: {stars} stars")
+    
+    # Match for TP-Link-defaults
+    elif repo_name == 'tp-link-defaults' or 'tp-link-defaults' in full_name:
+        specific_repos['tp-link-defaults'] = stars
+        print(f"    ✓ Found TP-Link-defaults: {stars} stars")
+
+async def get_contributed_repos(session, username, token, user_data):
+    """Get repositories contributed to from GraphQL data or REST API fallback"""
+    contributed_repos = set()
+    
+    # REST API headers
+    rest_headers = {
+        'Authorization': f'token {token}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
+    
+    # Try multiple methods to get contributed repositories, in order of preference
+    methods = [
+        extract_graphql_contributions,
+        get_contributions_from_events,
+        get_contributions_from_starred,
+        get_contributions_from_activity
+    ]
+    
+    for method in methods:
+        # Skip if we already have some results
+        if len(contributed_repos) > 0:
+            break
+            
+        try:
+            # Call the method and update our set
+            new_repos = await method(session, username, rest_headers, user_data)
+            contributed_repos.update(new_repos)
+            
+            # If we found some, report and continue
+            if len(new_repos) > 0:
+                method_name = method.__name__.replace('_', ' ').replace('get contributions from ', '')
+                print(f"  Found {len(new_repos)} contributed repos via {method_name}")
+        except Exception as e:
+            print(f"  Error in {method.__name__}: {e}")
+    
+    # If all methods failed, log it but return the empty set
+    if len(contributed_repos) == 0:
+        print("  Could not find any contributed repositories through any method")
+    
+    return contributed_repos
+
+async def extract_graphql_contributions(session, username, headers, user_data):
+    """Extract contributed repositories from GraphQL data"""
+    contributed_repos = set()
+    
+    # Direct contributions
+    repos_data = get_nested_value(user_data, ['repositoriesContributedTo'], {})
+    for repo in get_nested_value(repos_data, ['nodes'], []):
+        if repo and repo.get('nameWithOwner'):
+            contributed_repos.add(repo.get('nameWithOwner'))
+    
+    # Pull requests
+    pr_data = get_nested_value(user_data, ['pullRequests'], {})
+    for pr in get_nested_value(pr_data, ['nodes'], []):
+        repo = get_nested_value(pr, ['repository'], {})
+        if repo and repo.get('nameWithOwner'):
+            contributed_repos.add(repo.get('nameWithOwner'))
+    
+    # Issues
+    issues_data = get_nested_value(user_data, ['issues'], {})
+    for issue in get_nested_value(issues_data, ['nodes'], []):
+        repo = get_nested_value(issue, ['repository'], {})
+        if repo and repo.get('nameWithOwner'):
+            contributed_repos.add(repo.get('nameWithOwner'))
+            
+    return contributed_repos
+
+async def get_contributions_from_events(session, username, headers, *args):
+    """Get contributed repositories from user's public events"""
+    contributed_repos = set()
+    
+    # Use REST API to get events
+    events_url = f'https://api.github.com/users/{username}/events/public'
+    async with session.get(events_url, headers=headers) as response:
+        if response.status == 200:
+            events_data = await response.json()
+            
+            # Process events to find contributed repositories
+            for event in events_data:
+                repo = get_nested_value(event, ['repo', 'name'])
+                if repo and not repo.startswith(f"{username}/"):
+                    contributed_repos.add(repo)
+    
+    return contributed_repos
+
+async def get_contributions_from_starred(session, username, headers, *args):
+    """Get potential contributed repositories from starred repositories"""
+    contributed_repos = set()
+    
+    # Get starred repositories
+    starred_url = f'https://api.github.com/users/{username}/starred'
+    async with session.get(starred_url, headers=headers) as response:
+        if response.status == 200:
+            starred_data = await response.json()
+            
+            # Add starred repos that aren't owned by the user
+            for repo in starred_data:
+                full_name = repo.get('full_name')
+                owner = get_nested_value(repo, ['owner', 'login'])
+                if full_name and owner and owner.lower() != username.lower():
+                    contributed_repos.add(full_name)
+    
+    return contributed_repos
+
+async def get_contributions_from_activity(session, username, headers, *args):
+    """Get potential contributed repositories from user activity feed"""
+    contributed_repos = set()
+    
+    # Get received events (activity where others have mentioned the user)
+    activity_url = f'https://api.github.com/users/{username}/received_events'
+    async with session.get(activity_url, headers=headers) as response:
+        if response.status == 200:
+            activity_data = await response.json()
+            
+            # Process activity to find repositories
+            for event in activity_data:
+                repo = get_nested_value(event, ['repo', 'name'])
+                if repo and not repo.startswith(f"{username}/"):
+                    contributed_repos.add(repo)
+    
+    return contributed_repos
+
+async def apply_repo_fallbacks(session, specific_repos, headers):
+    """Apply fallbacks for any missing specific repositories using direct API calls"""
+    # Define repository mappings with their API endpoints and keys
+    repo_fallbacks = [
+        {
+            'key': 'awesome-censys-queries',
+            'endpoint': 'https://api.github.com/repos/thehappydinoa/awesome-censys-queries',
+            'display_name': 'awesome-censys-queries'
+        },
+        {
+            'key': 'iosrestrictionbruteforce',
+            'endpoint': 'https://api.github.com/repos/thehappydinoa/iosrestrictionbruteforce',
+            'display_name': 'iOSRestrictionBruteForce'
+        },
+        {
+            'key': 'rootos',
+            'endpoint': 'https://api.github.com/repos/thehappydinoa/rootos',
+            'display_name': 'rootOS'
+        },
+        {
+            'key': 'tp-link-defaults',
+            'endpoint': 'https://api.github.com/repos/thehappydinoa/tp-link-defaults',
+            'display_name': 'TP-Link-defaults'
+        }
+    ]
+    
+    # Check each repository and apply fallback if needed
+    for repo in repo_fallbacks:
+        if specific_repos[repo['key']] == 0:
+            print(f"  Trying direct API call for {repo['display_name']}...")
+            try:
+                # Make the API request
+                async with session.get(repo['endpoint'], headers=headers) as response:
+                    if response.status == 200:
+                        repo_data = await response.json()
+                        stars = repo_data.get('stargazers_count', 0) or 0
+                        specific_repos[repo['key']] = stars
+                        print(f"    ✓ Found {repo['display_name']} via direct API: {stars} stars")
+                    elif response.status == 404:
+                        print(f"    Repository {repo['display_name']} not found (404)")
+                    else:
+                        print(f"    Error fetching {repo['display_name']}: HTTP {response.status}")
+                        # Try alternative approach - search for the repository
+                        await search_for_repo(session, repo['key'], repo['display_name'], specific_repos, headers)
+            except Exception as e:
+                print(f"    Error getting {repo['display_name']}: {e}")
+                # Try alternative approach as fallback
+                await search_for_repo(session, repo['key'], repo['display_name'], specific_repos, headers)
+
+async def search_for_repo(session, repo_key, display_name, specific_repos, headers):
+    """Search for a repository as a fallback method"""
+    try:
+        print(f"    Attempting to search for {display_name}...")
+        search_query = f"q=repo:thehappydinoa/{repo_key}"
+        search_url = f"https://api.github.com/search/repositories?{search_query}"
+        
+        async with session.get(search_url, headers=headers) as response:
+            if response.status == 200:
+                search_data = await response.json()
+                items = search_data.get('items', [])
+                if items and len(items) > 0:
+                    stars = items[0].get('stargazers_count', 0) or 0
+                    specific_repos[repo_key] = stars
+                    print(f"    ✓ Found {display_name} via search: {stars} stars")
+                else:
+                    print(f"    No results found for {display_name} in search")
+            else:
+                print(f"    Search for {display_name} failed: HTTP {response.status}")
+    except Exception as e:
+        print(f"    Error searching for {display_name}: {e}")
+
+async def get_commit_count(user_data, account_age, total_repos):
+    """Calculate commit count from contribution data or estimate if not available"""
+    # Try multiple methods to get commit count, in order of reliability
+    methods = [
+        get_commits_from_total_contributions,
+        get_commits_from_repository_contributions,
+        estimate_commits_from_profile
+    ]
+    
+    # Pass context data to all methods
+    context = {
+        'user_data': user_data,
+        'account_age': account_age,
+        'total_repos': total_repos
+    }
+    
+    # Try each method in order until one succeeds
+    for method in methods:
+        try:
+            commits = await method(context)
+            if commits > 0:
+                method_name = method.__name__.replace('_', ' ').replace('get commits from ', '').replace('estimate commits from ', '')
+                print(f"  Found {commits} commits via {method_name}")
+                return commits
+        except Exception as e:
+            print(f"  Error in {method.__name__}: {e}")
+    
+    # If all methods failed, return a safe default
+    print("  Could not determine commit count through any method, using default")
+    return 100  # Safe default
+
+async def get_commits_from_total_contributions(context):
+    """Get commit count from totalCommitContributions field"""
+    user_data = context['user_data']
+    contributions = get_nested_value(user_data, ['contributionsCollection'], {})
+    
+    # Get total commit contributions (most reliable)
+    total_commits = contributions.get('totalCommitContributions', 0) or 0
+    if total_commits > 0:
+        return total_commits
+    
+    # If zero, this method failed
+    raise ValueError("No commit contributions found")
+
+async def get_commits_from_repository_contributions(context):
+    """Get commit count by summing repository contributions"""
+    user_data = context['user_data']
+    contributions = get_nested_value(user_data, ['contributionsCollection'], {})
+    
+    # Sum commits by repository
+    repo_commits = 0
+    for repo_contrib in get_nested_value(contributions, ['commitContributionsByRepository'], []):
+        contrib_count = get_nested_value(repo_contrib, ['contributions', 'totalCount'], 0)
+        repo_commits += contrib_count
+    
+    if repo_commits > 0:
+        return repo_commits
+    
+    # If zero, this method failed
+    raise ValueError("No repository commit contributions found")
+
+async def estimate_commits_from_profile(context):
+    """Estimate commit count based on account age and repository count"""
+    account_age = context['account_age']
+    total_repos = context['total_repos']
+    
+    if account_age <= 0 or total_repos <= 0:
+        raise ValueError("Insufficient data for estimation")
+    
+    # Estimate average commits per day based on public repos and account age
+    # This is a rough heuristic: ~1 commit per day per 10 repos is reasonable
+    account_days = account_age * 365
+    estimated_commits = int(account_days * (total_repos / 10))
+    
+    # Cap at reasonable maximum (5000 is already a lot for most users)
+    return min(estimated_commits, 5000)
 
 async def fetch_user_data(session, url, headers, username):
     """Fetch basic user data using GraphQL"""
