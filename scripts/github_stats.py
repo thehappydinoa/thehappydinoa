@@ -115,7 +115,10 @@ async def get_github_stats(username, token):
             'COMMITS': total_commits,
             'STARS': total_stars,
             'REPOSITORIES': total_repos,
-            'REPOSITORIES_CONTRIBUTED_TO': len(contributed_repos)
+            'REPOSITORIES_CONTRIBUTED_TO': len(contributed_repos),
+            # Set issues and PRs to 0 since we're not fetching them anymore
+            'ISSUES': 0,
+            'PULL_REQUESTS': 0
         }
         
         print(f"Retrieved stats: {total_repos} repos, {total_stars} stars, {total_commits} commits, {len(contributed_repos)} contributed repos")
@@ -200,20 +203,6 @@ async def extract_graphql_contributions(session, username, headers, user_data):
     # Direct contributions
     repos_data = get_nested_value(user_data, ['repositoriesContributedTo'], {})
     for repo in get_nested_value(repos_data, ['nodes'], []):
-        if repo and repo.get('nameWithOwner'):
-            contributed_repos.add(repo.get('nameWithOwner'))
-    
-    # Pull requests
-    pr_data = get_nested_value(user_data, ['pullRequests'], {})
-    for pr in get_nested_value(pr_data, ['nodes'], []):
-        repo = get_nested_value(pr, ['repository'], {})
-        if repo and repo.get('nameWithOwner'):
-            contributed_repos.add(repo.get('nameWithOwner'))
-    
-    # Issues
-    issues_data = get_nested_value(user_data, ['issues'], {})
-    for issue in get_nested_value(issues_data, ['nodes'], []):
-        repo = get_nested_value(issue, ['repository'], {})
         if repo and repo.get('nameWithOwner'):
             contributed_repos.add(repo.get('nameWithOwner'))
             
@@ -473,28 +462,10 @@ async def fetch_contribution_data(session, url, headers, username):
     query($username: String!) {
       user(login: $username) {
         # Repositories contributed to
-        repositoriesContributedTo(first: 100, contributionTypes: [COMMIT, PULL_REQUEST, REPOSITORY, ISSUE]) {
+        repositoriesContributedTo(first: 100, contributionTypes: [COMMIT, REPOSITORY]) {
           totalCount
           nodes {
             nameWithOwner
-          }
-        }
-        # Pull requests
-        pullRequests(first: 100) {
-          totalCount
-          nodes {
-            repository {
-              nameWithOwner
-            }
-          }
-        }
-        # Issues
-        issues(first: 100) {
-          totalCount
-          nodes {
-            repository {
-              nameWithOwner
-            }
           }
         }
         # Basic contribution stats
@@ -688,3 +659,4 @@ async def main():
 if __name__ == "__main__":
     # Run the async main function
     asyncio.run(main())
+
