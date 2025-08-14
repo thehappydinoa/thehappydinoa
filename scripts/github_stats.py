@@ -257,6 +257,25 @@ async def get_github_stats(username, token):
         
         print(f"  Final commit count: {total_commits}")
         
+        # Check if awesome-censys-queries is still missing (direct REST API call as last resort)
+        if specific_repos['awesome-censys-queries'] == 0:
+            print("  Trying direct API call for awesome-censys-queries...")
+            try:
+                rest_headers = {
+                    'Authorization': f'token {token}',
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+                
+                async with aiohttp.ClientSession() as rest_session:
+                    async with rest_session.get('https://api.github.com/repos/thehappydinoa/awesome-censys-queries', headers=rest_headers) as response:
+                        if response.status == 200:
+                            repo_data = await response.json()
+                            acq_stars = repo_data.get('stargazers_count', 0)
+                            specific_repos['awesome-censys-queries'] = acq_stars
+                            print(f"    ✓ Found awesome-censys-queries via direct API: {acq_stars} stars")
+            except Exception as e:
+                print(f"    Error getting awesome-censys-queries: {e}")
+        
         # Template values for TEMPLATE.md
         template_values = {
             'ACQ_STARS': specific_repos['awesome-censys-queries'],
