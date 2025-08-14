@@ -127,7 +127,7 @@
         "Submitted": "{{ PULL_REQUESTS }} pull requests",
         "Received": "818 stars",
         "Own": "198 repositories",
-        "Contributed to": "0 public repositories",
+        "Contributed to": "15 public repositories",
     }
 }
 
