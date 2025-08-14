@@ -122,12 +122,12 @@
     ],
     "Stats": {
         "Account Age": "8 years",
-        "Pushed": "124100 commits",
+        "Pushed": "913 commits",
         "Opened": "{{ ISSUES }} issues",
         "Submitted": "{{ PULL_REQUESTS }} pull requests",
         "Received": "2072 stars",
         "Own": "100 repositories",
-        "Contributed to": "0 public repositories",
+        "Contributed to": "15 public repositories",
     }
 }
 
