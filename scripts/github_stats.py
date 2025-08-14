@@ -156,7 +156,7 @@ async def check_specific_repo(repo_name, full_name, stars, specific_repos):
         print(f"    ✓ Found TP-Link-defaults: {stars} stars")
 
 async def get_contributed_repos(session, username, token, user_data):
-    """Get repositories contributed to from GraphQL data AND REST API methods - combining all results"""
+    """Get repositories where the user has actually committed code"""
     contributed_repos = set()
     
     # REST API headers
@@ -165,12 +165,10 @@ async def get_contributed_repos(session, username, token, user_data):
         'Accept': 'application/vnd.github.v3+json'
     }
     
-    # Try ALL methods to get contributed repositories and combine results
+    # Only use methods that find repositories with actual code contributions
     methods = [
-        extract_graphql_contributions,
-        get_contributions_from_events,
-        get_contributions_from_starred,
-        get_contributions_from_activity
+        extract_graphql_contributions,  # GraphQL direct contributions
+        get_contributions_from_commits  # REST API commit search
     ]
     
     for method in methods:
@@ -188,21 +186,27 @@ async def get_contributed_repos(session, username, token, user_data):
     
     # Report total count after combining all methods
     if len(contributed_repos) > 0:
-        print(f"  Total unique contributed repositories: {len(contributed_repos)}")
+        print(f"  Total unique contributed repositories with code commits: {len(contributed_repos)}")
     else:
         print("  Could not find any contributed repositories through any method")
     
     return contributed_repos
 
 async def extract_graphql_contributions(session, username, headers, user_data):
-    """Extract contributed repositories from GraphQL data"""
+    """Extract repositories with code contributions from GraphQL data"""
     contributed_repos = set()
     
-    # Direct contributions
+    # Direct contributions - but only count COMMIT contributions
     repos_data = get_nested_value(user_data, ['repositoriesContributedTo'], {})
+    
+    # Make sure we're only counting repositories with actual code contributions
+    # The GraphQL query was updated to only include COMMIT and REPOSITORY contribution types
     for repo in get_nested_value(repos_data, ['nodes'], []):
         if repo and repo.get('nameWithOwner'):
-            contributed_repos.add(repo.get('nameWithOwner'))
+            # Only add repos that aren't owned by the user
+            repo_name = repo.get('nameWithOwner', '')
+            if not repo_name.startswith(f"{username}/"):
+                contributed_repos.add(repo_name)
             
     return contributed_repos
 
@@ -242,64 +246,36 @@ async def get_contributions_from_events(session, username, headers, *args):
     
     return contributed_repos
 
-async def get_contributions_from_starred(session, username, headers, *args):
-    """Get potential contributed repositories from starred repositories with pagination"""
+async def get_contributions_from_commits(session, username, headers, *args):
+    """Find repositories where the user has actual commit contributions"""
     contributed_repos = set()
     
-    # Get starred repositories with pagination
+    # Use the GitHub Search API to find commits by the user
+    # This is more accurate than events or starred repos for finding actual code contributions
     page = 1
-    max_pages = 20  # Set a reasonable limit for pagination
+    max_pages = 10  # Set a reasonable limit for pagination
+    
+    # Search for commits authored by the user in repos not owned by the user
+    search_query = f"author:{username}+-user:{username}"
     
     while page <= max_pages:
-        starred_url = f'https://api.github.com/users/{username}/starred?page={page}&per_page=100'
-        async with session.get(starred_url, headers=headers) as response:
+        search_url = f'https://api.github.com/search/commits?q={search_query}&page={page}&per_page=100'
+        custom_headers = headers.copy()
+        # Search API requires this specific Accept header
+        custom_headers['Accept'] = 'application/vnd.github.cloak-preview+json'
+        
+        async with session.get(search_url, headers=custom_headers) as response:
             if response.status == 200:
-                starred_data = await response.json()
+                search_data = await response.json()
                 
-                # If no more starred repos, break
-                if not starred_data:
+                # Process search results
+                items = search_data.get('items', [])
+                if not items:
                     break
-                
-                # Add starred repos that aren't owned by the user
-                for repo in starred_data:
-                    full_name = repo.get('full_name')
-                    owner = get_nested_value(repo, ['owner', 'login'])
-                    if full_name and owner and owner.lower() != username.lower():
-                        contributed_repos.add(full_name)
-                
-                # Check for Link header to see if there are more pages
-                link_header = response.headers.get('Link', '')
-                if 'rel="next"' not in link_header:
-                    break
-                
-                page += 1
-            else:
-                # Error or rate limit, stop pagination
-                break
-    
-    return contributed_repos
-
-async def get_contributions_from_activity(session, username, headers, *args):
-    """Get potential contributed repositories from user activity feed with pagination"""
-    contributed_repos = set()
-    
-    # Get received events with pagination (activity where others have mentioned the user)
-    page = 1
-    max_pages = 10  # GitHub API typically limits to 10 pages for events
-    
-    while page <= max_pages:
-        activity_url = f'https://api.github.com/users/{username}/received_events?page={page}&per_page=100'
-        async with session.get(activity_url, headers=headers) as response:
-            if response.status == 200:
-                activity_data = await response.json()
-                
-                # If no more events, break
-                if not activity_data:
-                    break
-                
-                # Process activity to find repositories
-                for event in activity_data:
-                    repo = get_nested_value(event, ['repo', 'name'])
+                    
+                # Extract repository information from commit data
+                for item in items:
+                    repo = get_nested_value(item, ['repository', 'full_name'])
                     if repo and not repo.startswith(f"{username}/"):
                         contributed_repos.add(repo)
                 
@@ -307,11 +283,48 @@ async def get_contributions_from_activity(session, username, headers, *args):
                 link_header = response.headers.get('Link', '')
                 if 'rel="next"' not in link_header:
                     break
-                
+                    
                 page += 1
             else:
                 # Error or rate limit, stop pagination
+                error_msg = await response.text()
+                print(f"  Error searching for commits: HTTP {response.status} - {error_msg[:100]}")
                 break
+    
+    # As a backup, also check the events API for PushEvent types
+    # which indicate the user pushed commits to a repository
+    try:
+        page = 1
+        max_pages = 10
+        
+        while page <= max_pages:
+            events_url = f'https://api.github.com/users/{username}/events/public?page={page}&per_page=100'
+            async with session.get(events_url, headers=headers) as response:
+                if response.status == 200:
+                    events_data = await response.json()
+                    
+                    # If no more events, break
+                    if not events_data:
+                        break
+                    
+                    # Only look at PushEvent types which indicate actual commits
+                    for event in events_data:
+                        if event.get('type') == 'PushEvent':
+                            repo = get_nested_value(event, ['repo', 'name'])
+                            if repo:
+                                contributed_repos.add(repo)
+                    
+                    # Check for Link header to see if there are more pages
+                    link_header = response.headers.get('Link', '')
+                    if 'rel="next"' not in link_header:
+                        break
+                    
+                    page += 1
+                else:
+                    # Error or rate limit, stop pagination
+                    break
+    except Exception as e:
+        print(f"  Error processing events for commit contributions: {e}")
     
     return contributed_repos
 
@@ -524,11 +537,12 @@ async def fetch_contribution_data(session, url, headers, username):
     basic_query = """
     query($username: String!) {
       user(login: $username) {
-        # Repositories contributed to
-        repositoriesContributedTo(first: 100, contributionTypes: [COMMIT, REPOSITORY]) {
+        # Repositories contributed to - only count COMMIT contributions
+        repositoriesContributedTo(first: 100, contributionTypes: [COMMIT]) {
           totalCount
           nodes {
             nameWithOwner
+            isPrivate
           }
         }
         # Basic contribution stats
