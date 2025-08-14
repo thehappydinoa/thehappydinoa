@@ -98,36 +98,34 @@
         {
             "name": "awesome-censys-queries",
             "url": "https://github.com/thehappydinoa/awesome-censys-queries",
-            "stars": "1140",
+            "stars": 1140,
             "description": "Curated Censys search queries"
         },
         {
             "name": "iOSRestrictionBruteForce",
             "url": "https://github.com/thehappydinoa/iOSRestrictionBruteForce",
-            "stars": "351",
+            "stars": 351,
             "description": "iOS restrictions passcode cracking"
         },
         {
             "name": "rootOS",
             "url": "https://github.com/thehappydinoa/rootOS",
-            "stars": "142",
+            "stars": 142,
             "description": "macOS privilege escalation helper"
         },
         {
             "name": "TP-Link-defaults",
             "url": "https://github.com/thehappydinoa/TP-Link-defaults",
-            "stars": "35",
+            "stars": 35,
             "description": "Default password utility for TP-Link hotspots"
         }
     ],
     "Stats": {
         "Account Age": "8 years",
-        "Pushed": "5000 commits",
-        "Opened": "{{ ISSUES }} issues",
-        "Submitted": "{{ PULL_REQUESTS }} pull requests",
+        "Pushed": "178 commits",
         "Received": "818 stars",
         "Own": "198 repositories",
-        "Contributed to": "15 public repositories",
+        "Contributed to": "6 public repositories"
     }
 }
 
