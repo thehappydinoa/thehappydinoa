@@ -47,88 +47,134 @@ async def get_github_stats(username, token):
         total_repos = 0
         total_stars = 0
         
-        if 'data' in repo_data and 'user' in repo_data['data'] and 'repositories' in repo_data['data']['user']:
-            repos = repo_data['data']['user']['repositories']['nodes']
-            total_repos = repo_data['data']['user']['repositories']['totalCount']
+        if ('data' in repo_data and 
+            'user' in repo_data['data'] and 
+            repo_data['data']['user'] is not None and
+            'repositories' in repo_data['data']['user'] and
+            repo_data['data']['user']['repositories'] is not None):
+            
+            repos = repo_data['data']['user']['repositories'].get('nodes', []) or []
+            total_repos = repo_data['data']['user']['repositories'].get('totalCount', 0) or 0
             
             for repo in repos:
+                if repo is None:
+                    continue
+                    
                 # Count stars
-                total_stars += repo.get('stargazerCount', 0)
+                total_stars += repo.get('stargazerCount', 0) or 0
                 
                 # Check for specific repositories
                 repo_name = repo.get('name', '').lower()
                 for specific_name, _ in specific_repos.items():
                     if specific_name in repo_name:
-                        specific_repos[specific_name] = repo.get('stargazerCount', 0)
+                        specific_repos[specific_name] = repo.get('stargazerCount', 0) or 0
         
         # Calculate account age
         account_age = 0
-        if 'data' in user_data and 'user' in user_data['data'] and 'createdAt' in user_data['data']['user']:
+        if ('data' in user_data and 
+            'user' in user_data['data'] and 
+            user_data['data']['user'] is not None and
+            'createdAt' in user_data['data']['user']):
+            
             created_at = user_data['data']['user']['createdAt']
             if created_at:
-                created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                account_age = (datetime.now(created_date.tzinfo) - created_date).days // 365
+                try:
+                    created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                    account_age = max(1, (datetime.now(created_date.tzinfo) - created_date).days // 365)
+                except Exception as e:
+                    print(f"Error calculating account age: {e}")
+                    account_age = 1  # Default to 1 year if calculation fails
         
         # Get repositories contributed to
         print("Fetching repositories contributed to...")
         contributed_repos = set()
         
-        # Extract contributed repositories from contribution data
-        if 'data' in contribution_data and 'user' in contribution_data['data']:
-            # From contributed repositories
-            if ('repositoriesContributedTo' in contribution_data['data']['user'] and 
-                contribution_data['data']['user']['repositoriesContributedTo'] is not None and
-                'nodes' in contribution_data['data']['user']['repositoriesContributedTo']):
+        try:
+            # Extract contributed repositories from contribution data
+            if ('data' in contribution_data and 
+                'user' in contribution_data['data'] and 
+                contribution_data['data']['user'] is not None):
                 
-                contrib_repos = contribution_data['data']['user']['repositoriesContributedTo']['nodes'] or []
-                for repo in contrib_repos:
-                    if repo and repo.get('nameWithOwner'):
-                        contributed_repos.add(repo.get('nameWithOwner'))
-            
-            # From pull requests
-            if ('pullRequests' in contribution_data['data']['user'] and
-                contribution_data['data']['user']['pullRequests'] is not None and
-                'nodes' in contribution_data['data']['user']['pullRequests']):
+                # From contributed repositories
+                user_data = contribution_data['data']['user']
                 
-                prs = contribution_data['data']['user']['pullRequests']['nodes'] or []
-                for pr in prs:
-                    if pr and pr.get('repository') and pr.get('repository', {}).get('nameWithOwner'):
-                        contributed_repos.add(pr.get('repository', {}).get('nameWithOwner'))
-            
-            # From issues
-            if ('issues' in contribution_data['data']['user'] and
-                contribution_data['data']['user']['issues'] is not None and
-                'nodes' in contribution_data['data']['user']['issues']):
+                # Method 1: Direct contributions
+                if ('repositoriesContributedTo' in user_data and 
+                    user_data['repositoriesContributedTo'] is not None):
+                    
+                    repos_data = user_data['repositoriesContributedTo']
+                    if 'nodes' in repos_data and repos_data['nodes'] is not None:
+                        for repo in repos_data['nodes'] or []:
+                            if repo and repo.get('nameWithOwner'):
+                                contributed_repos.add(repo.get('nameWithOwner'))
                 
-                issues = contribution_data['data']['user']['issues']['nodes'] or []
-                for issue in issues:
-                    if issue and issue.get('repository') and issue.get('repository', {}).get('nameWithOwner'):
-                        contributed_repos.add(issue.get('repository', {}).get('nameWithOwner'))
+                # Method 2: Pull requests
+                if ('pullRequests' in user_data and 
+                    user_data['pullRequests'] is not None):
+                    
+                    pr_data = user_data['pullRequests']
+                    if 'nodes' in pr_data and pr_data['nodes'] is not None:
+                        for pr in pr_data['nodes'] or []:
+                            if (pr and 'repository' in pr and 
+                                pr['repository'] is not None and 
+                                'nameWithOwner' in pr['repository']):
+                                contributed_repos.add(pr['repository']['nameWithOwner'])
+                
+                # Method 3: Issues
+                if ('issues' in user_data and 
+                    user_data['issues'] is not None):
+                    
+                    issues_data = user_data['issues']
+                    if 'nodes' in issues_data and issues_data['nodes'] is not None:
+                        for issue in issues_data['nodes'] or []:
+                            if (issue and 'repository' in issue and 
+                                issue['repository'] is not None and 
+                                'nameWithOwner' in issue['repository']):
+                                contributed_repos.add(issue['repository']['nameWithOwner'])
+        except Exception as e:
+            print(f"Error processing contributed repositories: {e}")
+            # Continue with an empty set if there's an error
         
         # Get commit count from contribution data
         print("Calculating commit count...")
         total_commits = 0
         
-        if 'data' in contribution_data and 'user' in contribution_data['data']:
-            # Get contributions from the last year
-            if ('contributionsCollection' in contribution_data['data']['user'] and
-                contribution_data['data']['user']['contributionsCollection'] is not None):
+        try:
+            if ('data' in contribution_data and 
+                'user' in contribution_data['data'] and 
+                contribution_data['data']['user'] is not None):
                 
-                contributions = contribution_data['data']['user']['contributionsCollection']
+                user_data = contribution_data['data']['user']
                 
-                # Total commit contributions
-                total_commits = contributions.get('totalCommitContributions', 0) or 0
-                
-                # If total commits is 0, try to calculate from weekly commits
-                if (total_commits == 0 and 
-                    'commitContributionsByRepository' in contributions and
-                    contributions['commitContributionsByRepository'] is not None):
+                # Get contributions from the last year
+                if ('contributionsCollection' in user_data and
+                    user_data['contributionsCollection'] is not None):
                     
-                    for repo_contrib in contributions['commitContributionsByRepository'] or []:
-                        if repo_contrib and 'contributions' in repo_contrib:
-                            contrib_count = repo_contrib.get('contributions', {})
-                            if isinstance(contrib_count, dict) and 'totalCount' in contrib_count:
-                                total_commits += contrib_count.get('totalCount', 0) or 0
+                    contributions = user_data['contributionsCollection']
+                    
+                    # Method 1: Total commit contributions (most reliable)
+                    if 'totalCommitContributions' in contributions:
+                        total_commits = contributions.get('totalCommitContributions', 0) or 0
+                        print(f"  Found {total_commits} commits from totalCommitContributions")
+                    
+                    # Method 2: Sum commits by repository (if available)
+                    if (total_commits == 0 and 
+                        'commitContributionsByRepository' in contributions and
+                        contributions['commitContributionsByRepository'] is not None):
+                        
+                        repo_commits = 0
+                        for repo_contrib in contributions['commitContributionsByRepository'] or []:
+                            if repo_contrib and 'contributions' in repo_contrib:
+                                contrib_count = repo_contrib.get('contributions', {})
+                                if isinstance(contrib_count, dict) and 'totalCount' in contrib_count:
+                                    repo_commits += contrib_count.get('totalCount', 0) or 0
+                        
+                        if repo_commits > 0:
+                            total_commits = repo_commits
+                            print(f"  Found {total_commits} commits from repository contributions")
+        except Exception as e:
+            print(f"Error calculating commit count: {e}")
+            # Continue with default value if there's an error
         
         # If we still don't have commits, estimate based on account age and activity
         if total_commits == 0:
@@ -203,7 +249,10 @@ async def fetch_repo_data(session, url, headers, username):
 
 async def fetch_contribution_data(session, url, headers, username):
     """Fetch contribution data using GraphQL"""
-    query = """
+    # Split into two separate queries to avoid permissions issues
+    
+    # First query: Basic contribution data
+    basic_query = """
     query($username: String!) {
       user(login: $username) {
         # Repositories contributed to
@@ -231,9 +280,20 @@ async def fetch_contribution_data(session, url, headers, username):
             }
           }
         }
-        # Contributions
+        # Basic contribution stats
         contributionsCollection {
           totalCommitContributions
+        }
+      }
+    }
+    """
+    
+    # Second query: Try to get commit counts if permissions allow
+    commit_query = """
+    query($username: String!) {
+      user(login: $username) {
+        # Contributions by repository (may be restricted by some orgs)
+        contributionsCollection {
           commitContributionsByRepository(maxRepositories: 100) {
             repository {
               nameWithOwner
@@ -246,8 +306,34 @@ async def fetch_contribution_data(session, url, headers, username):
       }
     }
     """
+    
+    # Execute the basic query first
     variables = {'username': username}
-    return await execute_graphql_query(session, url, headers, query, variables)
+    basic_data = await execute_graphql_query(session, url, headers, basic_query, variables)
+    
+    # Try the commit query, but don't fail if it doesn't work
+    try:
+        commit_data = await execute_graphql_query(session, url, headers, commit_query, variables)
+        
+        # If successful, merge the commit data into the basic data
+        if ('data' in commit_data and 'user' in commit_data['data'] and 
+            commit_data['data']['user'] is not None and 
+            'contributionsCollection' in commit_data['data']['user']):
+            
+            # Ensure the structure exists in basic_data
+            if 'data' in basic_data and 'user' in basic_data['data'] and basic_data['data']['user'] is not None:
+                if 'contributionsCollection' not in basic_data['data']['user']:
+                    basic_data['data']['user']['contributionsCollection'] = {}
+                
+                # Add the commit contributions by repository
+                basic_data['data']['user']['contributionsCollection']['commitContributionsByRepository'] = (
+                    commit_data['data']['user']['contributionsCollection'].get('commitContributionsByRepository')
+                )
+    except Exception as e:
+        print(f"Warning: Could not fetch detailed commit data: {e}")
+        # Continue with basic data only
+    
+    return basic_data
 
 async def execute_graphql_query(session, url, headers, query, variables):
     """Execute a GraphQL query and return the result"""
