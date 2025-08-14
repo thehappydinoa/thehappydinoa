@@ -7,179 +7,246 @@ Generates GitHub statistics and updates README.md from TEMPLATE.md
 import os
 import sys
 import json
-import requests
+import asyncio
+import aiohttp
 from datetime import datetime
 import re
 
-def get_github_stats(username, token):
-    """Fetch GitHub statistics using GitHub API"""
-    headers = {
-        'Authorization': f'token {token}',
-        'Accept': 'application/vnd.github.v3+json'
-    }
+async def get_github_stats(username, token):
+    """Fetch GitHub statistics using GitHub GraphQL API"""
     
     print(f"Fetching stats for user: {username}")
     
-    # Get user info
-    user_url = f'https://api.github.com/users/{username}'
-    user_response = requests.get(user_url, headers=headers)
-    user_data = user_response.json()
-    
-    # Get repositories
-    repos_url = f'https://api.github.com/users/{username}/repos?per_page=100&sort=updated'
-    repos_response = requests.get(repos_url, headers=headers)
-    repos_data = repos_response.json()
-    
-    # Get specific repository stats for template values
-    acq_stars = 0
-    irb_stars = 0
-    rootos_stars = 0
-    tplink_stars = 0
-    
-    for repo in repos_data:
-        repo_name = repo.get('name', '').lower()
-        stars = repo.get('stargazers_count', 0)
-        
-        if 'awesome-censys-queries' in repo_name:
-            acq_stars = stars
-        elif 'iosrestrictionbruteforce' in repo_name:
-            irb_stars = stars
-        elif 'rootos' in repo_name:
-            rootos_stars = stars
-        elif 'tp-link-defaults' in repo_name or 'tplink' in repo_name:
-            tplink_stars = stars
-    
-    # Calculate account age
-    created_at = user_data.get('created_at')
-    account_age = 0
-    if created_at:
-        created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-        account_age = (datetime.now(created_date.tzinfo) - created_date).days // 365
-    
-    # Calculate stats
-    total_repos = len(repos_data)
-    total_stars = sum(repo.get('stargazers_count', 0) for repo in repos_data)
-    
-    # Get repositories contributed to using the events API
-    print("Fetching repositories contributed to...")
-    events_url = f'https://api.github.com/users/{username}/events/public?per_page=100'
-    events_response = requests.get(events_url, headers=headers)
-    events_data = events_response.json()
-    
-    # Get user's events to find contributed repos
-    contributed_repos = set()
-    if isinstance(events_data, list):
-        for event in events_data:
-            # PushEvent, PullRequestEvent, IssuesEvent, etc. indicate contribution
-            repo_name = event.get('repo', {}).get('name', '')
-            if '/' in repo_name:
-                owner, name = repo_name.split('/', 1)
-                if owner.lower() != username.lower():  # Not user's own repo
-                    contributed_repos.add(repo_name)
-    
-    # Also check starred repositories for additional contributions
-    starred_url = f'https://api.github.com/users/{username}/starred?per_page=100'
-    starred_response = requests.get(starred_url, headers=headers)
-    starred_data = starred_response.json()
-    
-    if isinstance(starred_data, list):
-        for repo in starred_data:
-            # Check if user has contributed to this repo
-            repo_full_name = repo.get('full_name', '')
-            if repo_full_name and repo.get('owner', {}).get('login') != username:
-                # Check for user's contributions to this repo
-                contributors_url = f'https://api.github.com/repos/{repo_full_name}/contributors'
-                try:
-                    contributors_response = requests.get(contributors_url, headers=headers)
-                    contributors_data = contributors_response.json()
-                    if isinstance(contributors_data, list):
-                        for contributor in contributors_data:
-                            if contributor.get('login') == username:
-                                contributed_repos.add(repo_full_name)
-                                break
-                except:
-                    # Skip if API rate limit or other issues
-                    pass
-    
-    # Get commit count using contribution stats API (more accurate)
-    print("Calculating commit count...")
-    total_commits = 0
-    
-    # Get the user's contribution stats
-    stats_url = f'https://api.github.com/users/{username}/repos?per_page=100'
-    stats_response = requests.get(stats_url, headers=headers)
-    stats_data = stats_response.json()
-    
-    if isinstance(stats_data, list):
-        # Process each repository
-        for repo in stats_data:
-            repo_name = repo.get('name')
-            repo_full_name = repo.get('full_name')
-            
-            # Get commit stats for this repository
-            try:
-                # Use statistics API for more accurate counts
-                commit_activity_url = f'https://api.github.com/repos/{repo_full_name}/stats/contributors'
-                commit_response = requests.get(commit_activity_url, headers=headers)
-                commit_data = commit_response.json()
-                
-                if isinstance(commit_data, list):
-                    for contributor in commit_data:
-                        if contributor.get('author', {}).get('login') == username:
-                            # Sum up all commits from this contributor
-                            total_commits += contributor.get('total', 0)
-                            break
-                else:
-                    # Fallback to direct commit counting
-                    commits_url = f'https://api.github.com/repos/{repo_full_name}/commits?author={username}&per_page=1'
-                    commits_response = requests.get(commits_url, headers=headers)
-                    
-                    # Check if we have the last page info in headers
-                    if 'link' in commits_response.headers:
-                        link_header = commits_response.headers['link']
-                        # Extract the last page number from the Link header
-                        last_page_match = re.search(r'page=(\d+)>; rel="last"', link_header)
-                        if last_page_match:
-                            last_page = int(last_page_match.group(1))
-                            # Get actual count from last page
-                            repo_commits = last_page
-                            total_commits += repo_commits
-            except Exception as e:
-                # If API fails, skip this repo
-                print(f"Error getting commits for {repo_full_name}: {e}")
-                pass
-    
-    # If total commits is still suspiciously high (over 50,000), use a more conservative estimate
-    if total_commits > 50000:
-        print("Commit count seems high, using profile contribution data for estimation...")
-        # Use user profile data which is more reliable but less detailed
-        user_url = f'https://api.github.com/users/{username}'
-        user_response = requests.get(user_url, headers=headers)
-        user_data = user_response.json()
-        
-        # Get public contributions from profile
-        public_contributions = user_data.get('public_repos', 0) * 10  # Rough estimate
-        
-        # Use the lower of the two estimates
-        total_commits = min(total_commits, public_contributions)
-    
-    # Template values for TEMPLATE.md
-    template_values = {
-        'ACQ_STARS': acq_stars,
-        'IRB_STARS': irb_stars,
-        'ROOTOS_STARS': rootos_stars,
-        'TPLINK_STARS': tplink_stars,
-        'ACCOUNT_AGE': account_age,
-        'COMMITS': total_commits,
-        'STARS': total_stars,
-        'REPOSITORIES': total_repos,
-        'REPOSITORIES_CONTRIBUTED_TO': len(contributed_repos)
+    # GraphQL endpoint and headers
+    graphql_url = 'https://api.github.com/graphql'
+    headers = {
+        'Authorization': f'bearer {token}',
+        'Content-Type': 'application/json'
     }
     
-    print(f"Retrieved stats: {total_repos} repos, {total_stars} stars, {total_commits} commits, {len(contributed_repos)} contributed repos")
-    return template_values
+    async with aiohttp.ClientSession() as session:
+        # Use concurrent tasks for better performance
+        user_data_task = fetch_user_data(session, graphql_url, headers, username)
+        repo_data_task = fetch_repo_data(session, graphql_url, headers, username)
+        contribution_data_task = fetch_contribution_data(session, graphql_url, headers, username)
+        
+        # Wait for all tasks to complete
+        user_data = await user_data_task
+        repo_data = await repo_data_task
+        contribution_data = await contribution_data_task
+        
+        # Extract specific repository stats
+        specific_repos = {
+            'awesome-censys-queries': 0,
+            'iosrestrictionbruteforce': 0,
+            'rootos': 0,
+            'tp-link-defaults': 0
+        }
+        
+        # Process repository data
+        total_repos = 0
+        total_stars = 0
+        
+        if 'data' in repo_data and 'user' in repo_data['data'] and 'repositories' in repo_data['data']['user']:
+            repos = repo_data['data']['user']['repositories']['nodes']
+            total_repos = repo_data['data']['user']['repositories']['totalCount']
+            
+            for repo in repos:
+                # Count stars
+                total_stars += repo.get('stargazerCount', 0)
+                
+                # Check for specific repositories
+                repo_name = repo.get('name', '').lower()
+                for specific_name, _ in specific_repos.items():
+                    if specific_name in repo_name:
+                        specific_repos[specific_name] = repo.get('stargazerCount', 0)
+        
+        # Calculate account age
+        account_age = 0
+        if 'data' in user_data and 'user' in user_data['data'] and 'createdAt' in user_data['data']['user']:
+            created_at = user_data['data']['user']['createdAt']
+            if created_at:
+                created_date = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                account_age = (datetime.now(created_date.tzinfo) - created_date).days // 365
+        
+        # Get repositories contributed to
+        print("Fetching repositories contributed to...")
+        contributed_repos = set()
+        
+        # Extract contributed repositories from contribution data
+        if 'data' in contribution_data and 'user' in contribution_data['data']:
+            # From contributed repositories
+            if 'repositoriesContributedTo' in contribution_data['data']['user']:
+                contrib_repos = contribution_data['data']['user']['repositoriesContributedTo']['nodes']
+                for repo in contrib_repos:
+                    if repo.get('nameWithOwner'):
+                        contributed_repos.add(repo.get('nameWithOwner'))
+            
+            # From pull requests
+            if 'pullRequests' in contribution_data['data']['user']:
+                prs = contribution_data['data']['user']['pullRequests']['nodes']
+                for pr in prs:
+                    if pr.get('repository', {}).get('nameWithOwner'):
+                        contributed_repos.add(pr.get('repository', {}).get('nameWithOwner'))
+            
+            # From issues
+            if 'issues' in contribution_data['data']['user']:
+                issues = contribution_data['data']['user']['issues']['nodes']
+                for issue in issues:
+                    if issue.get('repository', {}).get('nameWithOwner'):
+                        contributed_repos.add(issue.get('repository', {}).get('nameWithOwner'))
+        
+        # Get commit count from contribution data
+        print("Calculating commit count...")
+        total_commits = 0
+        
+        if 'data' in contribution_data and 'user' in contribution_data['data']:
+            # Get contributions from the last year
+            if 'contributionsCollection' in contribution_data['data']['user']:
+                contributions = contribution_data['data']['user']['contributionsCollection']
+                
+                # Total commit contributions
+                total_commits = contributions.get('totalCommitContributions', 0)
+                
+                # If total commits is 0, try to calculate from weekly commits
+                if total_commits == 0 and 'commitContributionsByRepository' in contributions:
+                    for repo_contrib in contributions['commitContributionsByRepository']:
+                        total_commits += repo_contrib.get('contributions', {}).get('totalCount', 0)
+        
+        # If we still don't have commits, estimate based on account age and activity
+        if total_commits == 0:
+            print("  Using profile contribution estimate...")
+            if account_age > 0:
+                # Estimate average commits per day based on public repos and account age
+                # This is a rough heuristic: ~1 commit per day per 10 repos is reasonable
+                account_days = account_age * 365
+                estimated_commits = int(account_days * (total_repos / 10))
+                # Cap at reasonable maximum (5000 is already a lot for most users)
+                total_commits = min(estimated_commits, 5000)
+        
+        print(f"  Final commit count: {total_commits}")
+        
+        # Template values for TEMPLATE.md
+        template_values = {
+            'ACQ_STARS': specific_repos['awesome-censys-queries'],
+            'IRB_STARS': specific_repos['iosrestrictionbruteforce'],
+            'ROOTOS_STARS': specific_repos['rootos'],
+            'TPLINK_STARS': specific_repos['tp-link-defaults'],
+            'ACCOUNT_AGE': account_age,
+            'COMMITS': total_commits,
+            'STARS': total_stars,
+            'REPOSITORIES': total_repos,
+            'REPOSITORIES_CONTRIBUTED_TO': len(contributed_repos)
+        }
+        
+        print(f"Retrieved stats: {total_repos} repos, {total_stars} stars, {total_commits} commits, {len(contributed_repos)} contributed repos")
+        return template_values
 
-def process_template(template_path, output_path, template_values):
+async def fetch_user_data(session, url, headers, username):
+    """Fetch basic user data using GraphQL"""
+    query = """
+    query($username: String!) {
+      user(login: $username) {
+        name
+        createdAt
+        followers {
+          totalCount
+        }
+        following {
+          totalCount
+        }
+      }
+    }
+    """
+    variables = {'username': username}
+    return await execute_graphql_query(session, url, headers, query, variables)
+
+async def fetch_repo_data(session, url, headers, username):
+    """Fetch repository data using GraphQL"""
+    query = """
+    query($username: String!, $count: Int!) {
+      user(login: $username) {
+        repositories(first: $count, ownerAffiliations: OWNER) {
+          totalCount
+          nodes {
+            name
+            nameWithOwner
+            stargazerCount
+            forkCount
+            primaryLanguage {
+              name
+            }
+          }
+        }
+      }
+    }
+    """
+    variables = {'username': username, 'count': 100}
+    return await execute_graphql_query(session, url, headers, query, variables)
+
+async def fetch_contribution_data(session, url, headers, username):
+    """Fetch contribution data using GraphQL"""
+    query = """
+    query($username: String!) {
+      user(login: $username) {
+        # Repositories contributed to
+        repositoriesContributedTo(first: 100, contributionTypes: [COMMIT, PULL_REQUEST, REPOSITORY, ISSUE]) {
+          totalCount
+          nodes {
+            nameWithOwner
+          }
+        }
+        # Pull requests
+        pullRequests(first: 100) {
+          totalCount
+          nodes {
+            repository {
+              nameWithOwner
+            }
+          }
+        }
+        # Issues
+        issues(first: 100) {
+          totalCount
+          nodes {
+            repository {
+              nameWithOwner
+            }
+          }
+        }
+        # Contributions
+        contributionsCollection {
+          totalCommitContributions
+          commitContributionsByRepository(maxRepositories: 100) {
+            repository {
+              nameWithOwner
+            }
+            contributions {
+              totalCount
+            }
+          }
+        }
+      }
+    }
+    """
+    variables = {'username': username}
+    return await execute_graphql_query(session, url, headers, query, variables)
+
+async def execute_graphql_query(session, url, headers, query, variables):
+    """Execute a GraphQL query and return the result"""
+    payload = {
+        'query': query,
+        'variables': variables
+    }
+    
+    async with session.post(url, json=payload, headers=headers) as response:
+        if response.status == 200:
+            return await response.json()
+        else:
+            print(f"Error executing GraphQL query: {response.status}")
+            return {}
+
+async def process_template(template_path, output_path, template_values):
     """Process template file and replace template values with stats data"""
     
     # Read template file
@@ -206,7 +273,7 @@ def process_template(template_path, output_path, template_values):
         print(f"Error writing to {output_path}: {e}")
         return False
 
-def save_stats_to_json(stats, output_path='github_stats.json'):
+async def save_stats_to_json(stats, output_path='github_stats.json'):
     """Save stats to JSON file"""
     try:
         with open(output_path, 'w', encoding='utf-8') as f:
@@ -217,7 +284,26 @@ def save_stats_to_json(stats, output_path='github_stats.json'):
         print(f"Error saving to {output_path}: {e}")
         return False
 
-def main():
+async def get_username_from_git():
+    """Try to extract username from git config"""
+    try:
+        with open('.git/config', 'r') as f:
+            config = f.read()
+            if 'github.com:' in config:
+                # Extract username from git remote
+                match = re.search(r'github\.com:([^/]+)/', config)
+                if match:
+                    return match.group(1)
+            elif 'github.com/' in config:
+                # Alternative format
+                match = re.search(r'github\.com/([^/]+)/', config)
+                if match:
+                    return match.group(1)
+    except:
+        pass
+    return None
+
+async def main():
     """Main function"""
     # Parse command line arguments
     template_path = 'TEMPLATE.md'
@@ -239,16 +325,7 @@ def main():
     username = os.environ.get('GITHUB_USERNAME')
     if not username:
         # Try to get from repository
-        try:
-            with open('.git/config', 'r') as f:
-                config = f.read()
-                if 'github.com:' in config:
-                    # Extract username from git remote
-                    match = re.search(r'github\.com:([^/]+)/', config)
-                    if match:
-                        username = match.group(1)
-        except:
-            pass
+        username = await get_username_from_git()
         
         if not username:
             print("Error: GITHUB_USERNAME environment variable not set and could not determine from git config")
@@ -256,7 +333,7 @@ def main():
     
     try:
         # Get stats
-        template_values = get_github_stats(username, token)
+        template_values = await get_github_stats(username, token)
         
         # Print template values
         print("\nTemplate values for TEMPLATE.md:")
@@ -264,12 +341,12 @@ def main():
             print(f"  {key}: {value}")
         
         # Save to JSON file
-        save_stats_to_json(template_values)
+        await save_stats_to_json(template_values)
         
         # Process template
         print(f"\nProcessing template: {template_path}")
         print(f"Output to: {output_path}")
-        if process_template(template_path, output_path, template_values):
+        if await process_template(template_path, output_path, template_values):
             print("Template processing completed successfully!")
         else:
             print("Template processing failed!")
@@ -280,4 +357,5 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    # Run the async main function
+    asyncio.run(main())

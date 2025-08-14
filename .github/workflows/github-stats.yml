@@ -22,7 +22,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests
+          pip install aiohttp
 
       - name: Generate GitHub Stats and Process Template
         env:
