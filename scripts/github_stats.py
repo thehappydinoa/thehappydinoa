@@ -56,6 +56,8 @@ async def get_github_stats(username, token):
             repos = repo_data['data']['user']['repositories'].get('nodes', []) or []
             total_repos = repo_data['data']['user']['repositories'].get('totalCount', 0) or 0
             
+            # Print all repositories for debugging
+            print("Checking repositories for specific projects:")
             for repo in repos:
                 if repo is None:
                     continue
@@ -63,11 +65,33 @@ async def get_github_stats(username, token):
                 # Count stars
                 total_stars += repo.get('stargazerCount', 0) or 0
                 
-                # Check for specific repositories
+                # Check for specific repositories with better matching
                 repo_name = repo.get('name', '').lower()
-                for specific_name, _ in specific_repos.items():
-                    if specific_name in repo_name:
-                        specific_repos[specific_name] = repo.get('stargazerCount', 0) or 0
+                full_name = repo.get('nameWithOwner', '').lower()
+                stars = repo.get('stargazerCount', 0) or 0
+                
+                # Print repository info for debugging
+                print(f"  Repository: {full_name}, Stars: {stars}")
+                
+                # Exact match for awesome-censys-queries
+                if repo_name == 'awesome-censys-queries' or 'thehappydinoa/awesome-censys-queries' in full_name:
+                    specific_repos['awesome-censys-queries'] = stars
+                    print(f"    ✓ Found awesome-censys-queries: {stars} stars")
+                
+                # Match for iOSRestrictionBruteForce (case insensitive)
+                elif repo_name.lower() == 'iosrestrictionbruteforce' or 'iosrestrictionbruteforce' in full_name.lower():
+                    specific_repos['iosrestrictionbruteforce'] = stars
+                    print(f"    ✓ Found iOSRestrictionBruteForce: {stars} stars")
+                
+                # Match for rootOS
+                elif repo_name.lower() == 'rootos' or 'rootos' in full_name.lower():
+                    specific_repos['rootos'] = stars
+                    print(f"    ✓ Found rootOS: {stars} stars")
+                
+                # Match for TP-Link-defaults
+                elif repo_name.lower() == 'tp-link-defaults' or 'tp-link-defaults' in full_name.lower():
+                    specific_repos['tp-link-defaults'] = stars
+                    print(f"    ✓ Found TP-Link-defaults: {stars} stars")
         
         # Calculate account age
         account_age = 0
@@ -90,7 +114,7 @@ async def get_github_stats(username, token):
         contributed_repos = set()
         
         try:
-            # Extract contributed repositories from contribution data
+            # Method 1: Extract contributed repositories from GraphQL data
             if ('data' in contribution_data and 
                 'user' in contribution_data['data'] and 
                 contribution_data['data']['user'] is not None):
@@ -98,7 +122,7 @@ async def get_github_stats(username, token):
                 # From contributed repositories
                 user_data = contribution_data['data']['user']
                 
-                # Method 1: Direct contributions
+                # Direct contributions
                 if ('repositoriesContributedTo' in user_data and 
                     user_data['repositoriesContributedTo'] is not None):
                     
@@ -108,7 +132,7 @@ async def get_github_stats(username, token):
                             if repo and repo.get('nameWithOwner'):
                                 contributed_repos.add(repo.get('nameWithOwner'))
                 
-                # Method 2: Pull requests
+                # Pull requests
                 if ('pullRequests' in user_data and 
                     user_data['pullRequests'] is not None):
                     
@@ -120,7 +144,7 @@ async def get_github_stats(username, token):
                                 'nameWithOwner' in pr['repository']):
                                 contributed_repos.add(pr['repository']['nameWithOwner'])
                 
-                # Method 3: Issues
+                # Issues
                 if ('issues' in user_data and 
                     user_data['issues'] is not None):
                     
@@ -131,6 +155,50 @@ async def get_github_stats(username, token):
                                 issue['repository'] is not None and 
                                 'nameWithOwner' in issue['repository']):
                                 contributed_repos.add(issue['repository']['nameWithOwner'])
+            
+            # Method 2: If GraphQL didn't work (or found nothing), use REST API as fallback
+            if len(contributed_repos) == 0:
+                print("  No contributed repositories found via GraphQL, trying REST API...")
+                
+                # Use REST API to get events
+                events_url = f'https://api.github.com/users/{username}/events/public'
+                rest_headers = {
+                    'Authorization': f'token {token}',
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+                
+                async with aiohttp.ClientSession() as rest_session:
+                    async with rest_session.get(events_url, headers=rest_headers) as response:
+                        if response.status == 200:
+                            events_data = await response.json()
+                            
+                            # Process events to find contributed repositories
+                            for event in events_data:
+                                repo = event.get('repo', {}).get('name')
+                                if repo and not repo.startswith(f"{username}/"):
+                                    contributed_repos.add(repo)
+                            
+                            print(f"  Found {len(contributed_repos)} contributed repos via REST API events")
+                
+                # If still no results, try starred repositories
+                if len(contributed_repos) == 0:
+                    print("  Checking starred repositories...")
+                    starred_url = f'https://api.github.com/users/{username}/starred'
+                    
+                    async with aiohttp.ClientSession() as rest_session:
+                        async with rest_session.get(starred_url, headers=rest_headers) as response:
+                            if response.status == 200:
+                                starred_data = await response.json()
+                                
+                                # Add starred repos that aren't owned by the user
+                                for repo in starred_data:
+                                    full_name = repo.get('full_name')
+                                    owner = repo.get('owner', {}).get('login')
+                                    if full_name and owner and owner.lower() != username.lower():
+                                        contributed_repos.add(full_name)
+                                
+                                print(f"  Found {len(contributed_repos)} potential contributed repos from starred repos")
+        
         except Exception as e:
             print(f"Error processing contributed repositories: {e}")
             # Continue with an empty set if there's an error
