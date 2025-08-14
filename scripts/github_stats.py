@@ -76,24 +76,33 @@ async def get_github_stats(username, token):
         # Extract contributed repositories from contribution data
         if 'data' in contribution_data and 'user' in contribution_data['data']:
             # From contributed repositories
-            if 'repositoriesContributedTo' in contribution_data['data']['user']:
-                contrib_repos = contribution_data['data']['user']['repositoriesContributedTo']['nodes']
+            if ('repositoriesContributedTo' in contribution_data['data']['user'] and 
+                contribution_data['data']['user']['repositoriesContributedTo'] is not None and
+                'nodes' in contribution_data['data']['user']['repositoriesContributedTo']):
+                
+                contrib_repos = contribution_data['data']['user']['repositoriesContributedTo']['nodes'] or []
                 for repo in contrib_repos:
-                    if repo.get('nameWithOwner'):
+                    if repo and repo.get('nameWithOwner'):
                         contributed_repos.add(repo.get('nameWithOwner'))
             
             # From pull requests
-            if 'pullRequests' in contribution_data['data']['user']:
-                prs = contribution_data['data']['user']['pullRequests']['nodes']
+            if ('pullRequests' in contribution_data['data']['user'] and
+                contribution_data['data']['user']['pullRequests'] is not None and
+                'nodes' in contribution_data['data']['user']['pullRequests']):
+                
+                prs = contribution_data['data']['user']['pullRequests']['nodes'] or []
                 for pr in prs:
-                    if pr.get('repository', {}).get('nameWithOwner'):
+                    if pr and pr.get('repository') and pr.get('repository', {}).get('nameWithOwner'):
                         contributed_repos.add(pr.get('repository', {}).get('nameWithOwner'))
             
             # From issues
-            if 'issues' in contribution_data['data']['user']:
-                issues = contribution_data['data']['user']['issues']['nodes']
+            if ('issues' in contribution_data['data']['user'] and
+                contribution_data['data']['user']['issues'] is not None and
+                'nodes' in contribution_data['data']['user']['issues']):
+                
+                issues = contribution_data['data']['user']['issues']['nodes'] or []
                 for issue in issues:
-                    if issue.get('repository', {}).get('nameWithOwner'):
+                    if issue and issue.get('repository') and issue.get('repository', {}).get('nameWithOwner'):
                         contributed_repos.add(issue.get('repository', {}).get('nameWithOwner'))
         
         # Get commit count from contribution data
@@ -102,16 +111,24 @@ async def get_github_stats(username, token):
         
         if 'data' in contribution_data and 'user' in contribution_data['data']:
             # Get contributions from the last year
-            if 'contributionsCollection' in contribution_data['data']['user']:
+            if ('contributionsCollection' in contribution_data['data']['user'] and
+                contribution_data['data']['user']['contributionsCollection'] is not None):
+                
                 contributions = contribution_data['data']['user']['contributionsCollection']
                 
                 # Total commit contributions
-                total_commits = contributions.get('totalCommitContributions', 0)
+                total_commits = contributions.get('totalCommitContributions', 0) or 0
                 
                 # If total commits is 0, try to calculate from weekly commits
-                if total_commits == 0 and 'commitContributionsByRepository' in contributions:
-                    for repo_contrib in contributions['commitContributionsByRepository']:
-                        total_commits += repo_contrib.get('contributions', {}).get('totalCount', 0)
+                if (total_commits == 0 and 
+                    'commitContributionsByRepository' in contributions and
+                    contributions['commitContributionsByRepository'] is not None):
+                    
+                    for repo_contrib in contributions['commitContributionsByRepository'] or []:
+                        if repo_contrib and 'contributions' in repo_contrib:
+                            contrib_count = repo_contrib.get('contributions', {})
+                            if isinstance(contrib_count, dict) and 'totalCount' in contrib_count:
+                                total_commits += contrib_count.get('totalCount', 0) or 0
         
         # If we still don't have commits, estimate based on account age and activity
         if total_commits == 0:
@@ -239,12 +256,21 @@ async def execute_graphql_query(session, url, headers, query, variables):
         'variables': variables
     }
     
-    async with session.post(url, json=payload, headers=headers) as response:
-        if response.status == 200:
-            return await response.json()
-        else:
-            print(f"Error executing GraphQL query: {response.status}")
-            return {}
+    try:
+        async with session.post(url, json=payload, headers=headers) as response:
+            if response.status == 200:
+                data = await response.json()
+                if 'errors' in data:
+                    print(f"GraphQL errors: {data['errors']}")
+                return data
+            else:
+                error_text = await response.text()
+                print(f"Error executing GraphQL query: Status {response.status}")
+                print(f"Response: {error_text[:200]}...")
+                return {}
+    except Exception as e:
+        print(f"Exception during GraphQL query execution: {str(e)}")
+        return {}
 
 async def process_template(template_path, output_path, template_values):
     """Process template file and replace template values with stats data"""
