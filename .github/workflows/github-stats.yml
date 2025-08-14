@@ -1,4 +1,4 @@
-name: GitHub Stats (teoxoy/profile-readme-stats)
+name: GitHub Stats
 on:
   workflow_dispatch:
   schedule:
@@ -15,17 +15,30 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Generate README.md
-        uses: teoxoy/profile-readme-stats@v1.2
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          token: ${{ secrets.USER_TOKEN }}
+          python-version: '3.9'
 
-      - name: Update README.md
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Generate GitHub Stats and Process Template
+        env:
+          GITHUB_TOKEN: ${{ secrets.USER_TOKEN }}
+          GITHUB_USERNAME: ${{ github.repository_owner }}
+        run: |
+          python scripts/github_stats.py TEMPLATE.md README.md
+        # Ensure no token leakage in logs
+        shell: bash
+
+      - name: Commit and push changes
         run: |
           if [[ "$(git status --porcelain)" != "" ]]; then
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add .
-          git commit -m "Update GitHub Stats"
-          git push
+            git config user.name github-actions[bot]
+            git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+            git add github_stats.json README.md
+            git commit -m "Update GitHub Stats [skip ci]"
+            git push
           fi

@@ -21,7 +21,7 @@
     },
     "Technologies": {
         "Backend": [
-          "Fast API",
+          "FastAPI",
           "Flask", 
           "Django",
           "Sanic",
@@ -45,7 +45,7 @@
           "MySQL",
           "PostgreSQL",
           "MongoDB",
-          "ElasticSearch",
+          "Elasticsearch",
           "Oracle"
         ],
         "Serverless": [
@@ -54,7 +54,7 @@
           "Azure Functions",
           "Heroku"
         ],
-        "Dev Ops": [
+        "DevOps": [
           "AWS",
           "GCP",
           "Git",
@@ -86,6 +86,40 @@
           "Adobe Premiere Pro"
         ],
     },
+    "Interests": [
+        "OSINT tooling and methods",
+        "Malware analysis",
+        "Internet scanning and C2/malware infrastructure discovery",
+        "LoRa mesh networking (Meshtastic)",
+        "RFID/NFC systems",
+        "3D printing"
+    ],
+    "Open-source Highlights": [
+        {
+            "name": "awesome-censys-queries",
+            "url": "https://github.com/thehappydinoa/awesome-censys-queries",
+            "stars": "1.1k+",
+            "description": "Curated Censys search queries"
+        },
+        {
+            "name": "iOSRestrictionBruteForce",
+            "url": "https://github.com/thehappydinoa/iOSRestrictionBruteForce",
+            "stars": "350+",
+            "description": "iOS restrictions passcode cracking"
+        },
+        {
+            "name": "rootOS",
+            "url": "https://github.com/thehappydinoa/rootOS",
+            "stars": "140+",
+            "description": "macOS privilege escalation helper"
+        },
+        {
+            "name": "TP-Link-defaults",
+            "url": "https://github.com/thehappydinoa/TP-Link-defaults",
+            "stars": "35+",
+            "description": "Default password utility for TP-Link hotspots"
+        }
+    ],
     "Stats": {
         "Account Age": "8 years",
         "Pushed": "3201 commits",
