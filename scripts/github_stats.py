@@ -156,7 +156,7 @@ async def check_specific_repo(repo_name, full_name, stars, specific_repos):
         print(f"    ✓ Found TP-Link-defaults: {stars} stars")
 
 async def get_contributed_repos(session, username, token, user_data):
-    """Get repositories contributed to from GraphQL data or REST API fallback"""
+    """Get repositories contributed to from GraphQL data AND REST API methods - combining all results"""
     contributed_repos = set()
     
     # REST API headers
@@ -165,7 +165,7 @@ async def get_contributed_repos(session, username, token, user_data):
         'Accept': 'application/vnd.github.v3+json'
     }
     
-    # Try multiple methods to get contributed repositories, in order of preference
+    # Try ALL methods to get contributed repositories and combine results
     methods = [
         extract_graphql_contributions,
         get_contributions_from_events,
@@ -174,24 +174,22 @@ async def get_contributed_repos(session, username, token, user_data):
     ]
     
     for method in methods:
-        # Skip if we already have some results
-        if len(contributed_repos) > 0:
-            break
-            
         try:
             # Call the method and update our set
             new_repos = await method(session, username, rest_headers, user_data)
-            contributed_repos.update(new_repos)
             
-            # If we found some, report and continue
+            # If we found some, report and add to our combined set
             if len(new_repos) > 0:
                 method_name = method.__name__.replace('_', ' ').replace('get contributions from ', '')
                 print(f"  Found {len(new_repos)} contributed repos via {method_name}")
+                contributed_repos.update(new_repos)
         except Exception as e:
             print(f"  Error in {method.__name__}: {e}")
     
-    # If all methods failed, log it but return the empty set
-    if len(contributed_repos) == 0:
+    # Report total count after combining all methods
+    if len(contributed_repos) > 0:
+        print(f"  Total unique contributed repositories: {len(contributed_repos)}")
+    else:
         print("  Could not find any contributed repositories through any method")
     
     return contributed_repos
@@ -209,57 +207,111 @@ async def extract_graphql_contributions(session, username, headers, user_data):
     return contributed_repos
 
 async def get_contributions_from_events(session, username, headers, *args):
-    """Get contributed repositories from user's public events"""
+    """Get contributed repositories from user's public events - with pagination for more complete results"""
     contributed_repos = set()
     
-    # Use REST API to get events
-    events_url = f'https://api.github.com/users/{username}/events/public'
-    async with session.get(events_url, headers=headers) as response:
-        if response.status == 200:
-            events_data = await response.json()
-            
-            # Process events to find contributed repositories
-            for event in events_data:
-                repo = get_nested_value(event, ['repo', 'name'])
-                if repo and not repo.startswith(f"{username}/"):
-                    contributed_repos.add(repo)
+    # Use REST API to get events with pagination
+    page = 1
+    max_pages = 10  # GitHub API typically limits to 10 pages for events
+    
+    while page <= max_pages:
+        events_url = f'https://api.github.com/users/{username}/events/public?page={page}&per_page=100'
+        async with session.get(events_url, headers=headers) as response:
+            if response.status == 200:
+                events_data = await response.json()
+                
+                # If no more events, break
+                if not events_data:
+                    break
+                
+                # Process events to find contributed repositories
+                for event in events_data:
+                    repo = get_nested_value(event, ['repo', 'name'])
+                    if repo and not repo.startswith(f"{username}/"):
+                        contributed_repos.add(repo)
+                
+                # Check for Link header to see if there are more pages
+                link_header = response.headers.get('Link', '')
+                if 'rel="next"' not in link_header:
+                    break
+                
+                page += 1
+            else:
+                # Error or rate limit, stop pagination
+                break
     
     return contributed_repos
 
 async def get_contributions_from_starred(session, username, headers, *args):
-    """Get potential contributed repositories from starred repositories"""
+    """Get potential contributed repositories from starred repositories with pagination"""
     contributed_repos = set()
     
-    # Get starred repositories
-    starred_url = f'https://api.github.com/users/{username}/starred'
-    async with session.get(starred_url, headers=headers) as response:
-        if response.status == 200:
-            starred_data = await response.json()
-            
-            # Add starred repos that aren't owned by the user
-            for repo in starred_data:
-                full_name = repo.get('full_name')
-                owner = get_nested_value(repo, ['owner', 'login'])
-                if full_name and owner and owner.lower() != username.lower():
-                    contributed_repos.add(full_name)
+    # Get starred repositories with pagination
+    page = 1
+    max_pages = 20  # Set a reasonable limit for pagination
+    
+    while page <= max_pages:
+        starred_url = f'https://api.github.com/users/{username}/starred?page={page}&per_page=100'
+        async with session.get(starred_url, headers=headers) as response:
+            if response.status == 200:
+                starred_data = await response.json()
+                
+                # If no more starred repos, break
+                if not starred_data:
+                    break
+                
+                # Add starred repos that aren't owned by the user
+                for repo in starred_data:
+                    full_name = repo.get('full_name')
+                    owner = get_nested_value(repo, ['owner', 'login'])
+                    if full_name and owner and owner.lower() != username.lower():
+                        contributed_repos.add(full_name)
+                
+                # Check for Link header to see if there are more pages
+                link_header = response.headers.get('Link', '')
+                if 'rel="next"' not in link_header:
+                    break
+                
+                page += 1
+            else:
+                # Error or rate limit, stop pagination
+                break
     
     return contributed_repos
 
 async def get_contributions_from_activity(session, username, headers, *args):
-    """Get potential contributed repositories from user activity feed"""
+    """Get potential contributed repositories from user activity feed with pagination"""
     contributed_repos = set()
     
-    # Get received events (activity where others have mentioned the user)
-    activity_url = f'https://api.github.com/users/{username}/received_events'
-    async with session.get(activity_url, headers=headers) as response:
-        if response.status == 200:
-            activity_data = await response.json()
-            
-            # Process activity to find repositories
-            for event in activity_data:
-                repo = get_nested_value(event, ['repo', 'name'])
-                if repo and not repo.startswith(f"{username}/"):
-                    contributed_repos.add(repo)
+    # Get received events with pagination (activity where others have mentioned the user)
+    page = 1
+    max_pages = 10  # GitHub API typically limits to 10 pages for events
+    
+    while page <= max_pages:
+        activity_url = f'https://api.github.com/users/{username}/received_events?page={page}&per_page=100'
+        async with session.get(activity_url, headers=headers) as response:
+            if response.status == 200:
+                activity_data = await response.json()
+                
+                # If no more events, break
+                if not activity_data:
+                    break
+                
+                # Process activity to find repositories
+                for event in activity_data:
+                    repo = get_nested_value(event, ['repo', 'name'])
+                    if repo and not repo.startswith(f"{username}/"):
+                        contributed_repos.add(repo)
+                
+                # Check for Link header to see if there are more pages
+                link_header = response.headers.get('Link', '')
+                if 'rel="next"' not in link_header:
+                    break
+                
+                page += 1
+            else:
+                # Error or rate limit, stop pagination
+                break
     
     return contributed_repos
 
@@ -403,13 +455,24 @@ async def estimate_commits_from_profile(context):
     if account_age <= 0 or total_repos <= 0:
         raise ValueError("Insufficient data for estimation")
     
-    # Estimate average commits per day based on public repos and account age
-    # This is a rough heuristic: ~1 commit per day per 10 repos is reasonable
+    # More aggressive estimation for all-time commits
+    # Average developer makes ~1.5 commits per day across all their repos
+    # For active developers with many repos, this can be much higher
     account_days = account_age * 365
-    estimated_commits = int(account_days * (total_repos / 10))
     
-    # Cap at reasonable maximum (5000 is already a lot for most users)
-    return min(estimated_commits, 5000)
+    # Base calculation: more repos = more commits per day on average
+    base_commits_per_day = 1.0 + (total_repos / 50.0)  # Scales with repository count
+    
+    # Adjust for very active developers
+    if total_repos > 50:
+        base_commits_per_day *= 1.5
+    if total_repos > 100:
+        base_commits_per_day *= 1.5
+        
+    estimated_commits = int(account_days * base_commits_per_day)
+    
+    # No cap for all-time commits - actual developers can have tens of thousands
+    return estimated_commits
 
 async def fetch_user_data(session, url, headers, username):
     """Fetch basic user data using GraphQL"""
