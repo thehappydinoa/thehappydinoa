@@ -110,7 +110,7 @@
         {
             "name": "rootOS",
             "url": "https://github.com/thehappydinoa/rootOS",
-            "stars": 142,
+            "stars": 141,
             "description": "macOS privilege escalation helper"
         },
         {
@@ -123,9 +123,9 @@
     "Stats": {
         "Account Age": "8 years",
         "Pushed": "180 commits",
-        "Received": "817 stars",
+        "Received": "816 stars",
         "Own": "198 repositories",
-        "Contributed to": "146 public repositories"
+        "Contributed to": "145 public repositories"
     }
 }
 
