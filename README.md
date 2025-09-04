@@ -104,7 +104,7 @@
         {
             "name": "iOSRestrictionBruteForce",
             "url": "https://github.com/thehappydinoa/iOSRestrictionBruteForce",
-            "stars": 350,
+            "stars": 351,
             "description": "iOS restrictions passcode cracking"
         },
         {
@@ -123,9 +123,9 @@
     "Stats": {
         "Account Age": "8 years",
         "Pushed": "180 commits",
-        "Received": "816 stars",
+        "Received": "817 stars",
         "Own": "198 repositories",
-        "Contributed to": "145 public repositories"
+        "Contributed to": "152 public repositories"
     }
 }
 
