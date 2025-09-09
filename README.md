@@ -125,7 +125,7 @@
         "Pushed": "180 commits",
         "Received": "817 stars",
         "Own": "198 repositories",
-        "Contributed to": "152 public repositories"
+        "Contributed to": "151 public repositories"
     }
 }
 
