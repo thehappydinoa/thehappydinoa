@@ -98,13 +98,13 @@
         {
             "name": "awesome-censys-queries",
             "url": "https://github.com/thehappydinoa/awesome-censys-queries",
-            "stars": 1149,
+            "stars": 1150,
             "description": "Curated Censys search queries"
         },
         {
             "name": "iOSRestrictionBruteForce",
             "url": "https://github.com/thehappydinoa/iOSRestrictionBruteForce",
-            "stars": 351,
+            "stars": 352,
             "description": "iOS restrictions passcode cracking"
         },
         {
@@ -123,9 +123,9 @@
     "Stats": {
         "Account Age": "8 years",
         "Pushed": "180 commits",
-        "Received": "817 stars",
+        "Received": "818 stars",
         "Own": "198 repositories",
-        "Contributed to": "151 public repositories"
+        "Contributed to": "150 public repositories"
     }
 }
 
