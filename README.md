@@ -98,7 +98,7 @@
         {
             "name": "awesome-censys-queries",
             "url": "https://github.com/thehappydinoa/awesome-censys-queries",
-            "stars": 1158,
+            "stars": 1159,
             "description": "Curated Censys search queries"
         },
         {
@@ -110,7 +110,7 @@
         {
             "name": "rootOS",
             "url": "https://github.com/thehappydinoa/rootOS",
-            "stars": 141,
+            "stars": 139,
             "description": "macOS privilege escalation helper"
         },
         {
@@ -123,7 +123,7 @@
     "Stats": {
         "Account Age": "8 years",
         "Pushed": "179 commits",
-        "Received": "819 stars",
+        "Received": "817 stars",
         "Own": "198 repositories",
         "Contributed to": "150 public repositories"
     }
