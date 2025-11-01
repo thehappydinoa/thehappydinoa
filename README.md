@@ -98,7 +98,7 @@
         {
             "name": "awesome-censys-queries",
             "url": "https://github.com/thehappydinoa/awesome-censys-queries",
-            "stars": 1173,
+            "stars": 1174,
             "description": "Curated Censys search queries"
         },
         {
