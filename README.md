@@ -123,7 +123,7 @@
     "Stats": {
         "Account Age": "8 years",
         "Pushed": "204 commits",
-        "Received": "820 stars",
+        "Received": "821 stars",
         "Own": "199 repositories",
         "Contributed to": "145 public repositories"
     }
